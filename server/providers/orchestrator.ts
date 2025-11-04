@@ -4,6 +4,7 @@ import { gemini } from './gemini';
 import { grok } from './grok';
 import { elevenLabs } from './elevenlabs';
 import { perplexity } from '../perplexity';
+import { deepResearch } from './research';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 
@@ -53,6 +54,10 @@ export class AIOrchestrator {
     // Handle special modes first
     if (mode === 'search') {
       return this.handleSearch(messages, ws, options);
+    }
+
+    if (mode === 'research') {
+      return this.handleResearch(messages, ws, options);
     }
 
     if (mode === 'vision' && messages.some(m => m.imageData)) {
@@ -114,6 +119,37 @@ export class AIOrchestrator {
     }
 
     return formatted;
+  }
+
+  /**
+   * Handle deep research with chain-of-thought reasoning
+   */
+  private async handleResearch(
+    messages: OrchestratorMessage[],
+    ws: WebSocket,
+    options: OrchestratorOptions
+  ): Promise<string> {
+    // Get the last user message as the research question
+    const lastUserMessage = messages
+      .filter(m => m.role === 'user')
+      .pop();
+
+    if (!lastUserMessage) {
+      throw new Error('No user message found for research');
+    }
+
+    // Perform deep research with chain-of-thought
+    const result = await deepResearch.performResearch(
+      lastUserMessage.content,
+      ws,
+      {
+        model: options.model || 'claude-3-opus-20240229',
+        temperature: options.temperature || 0.7,
+        maxSteps: 5,
+      }
+    );
+
+    return result;
   }
 
   /**
