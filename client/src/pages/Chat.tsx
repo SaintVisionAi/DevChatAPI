@@ -19,6 +19,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { User, Conversation, Message } from "@shared/schema";
 import { format } from "date-fns";
+import { ModeSelector } from "@/components/ModeSelector";
+
+type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
 export default function Chat() {
   const { toast } = useToast();
@@ -34,7 +37,7 @@ export default function Chat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -202,7 +205,7 @@ export default function Chat() {
             onClick={() => {
               setSelectedConversationId(null);
               setInput("");
-              setSelectedMode(null);
+              setSelectedMode('chat');
             }}
             data-testid="button-new-chat"
           >
@@ -382,71 +385,14 @@ export default function Chat() {
           )}
         </div>
 
-        {/* Mode Toggle Bar */}
+        {/* Premium Mode Selector */}
         <div className="border-t border-border bg-muted/10">
-          <div className="max-w-3xl mx-auto px-6 py-3">
-            <div className="flex gap-2 flex-wrap justify-center">
-              <Button
-                variant={selectedMode === "code" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "code" ? null : "code")}
-                data-testid="button-mode-code"
-                className="rounded-full"
-              >
-                <Code2 className="h-4 w-4 mr-2" />
-                Code
-              </Button>
-              <Button
-                variant={selectedMode === "image" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "image" ? null : "image")}
-                data-testid="button-mode-image"
-                className="rounded-full"
-              >
-                <ImageIcon className="h-4 w-4 mr-2" />
-                Image
-              </Button>
-              <Button
-                variant={selectedMode === "search" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "search" ? null : "search")}
-                data-testid="button-mode-search"
-                className="rounded-full"
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-              <Button
-                variant={selectedMode === "data" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "data" ? null : "data")}
-                data-testid="button-mode-data"
-                className="rounded-full"
-              >
-                <Database className="h-4 w-4 mr-2" />
-                Data
-              </Button>
-              <Button
-                variant={selectedMode === "calculate" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "calculate" ? null : "calculate")}
-                data-testid="button-mode-calculate"
-                className="rounded-full"
-              >
-                <Calculator className="h-4 w-4 mr-2" />
-                Calculate
-              </Button>
-              <Button
-                variant={selectedMode === "create" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedMode(selectedMode === "create" ? null : "create")}
-                data-testid="button-mode-create"
-                className="rounded-full"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Create
-              </Button>
-            </div>
+          <div className="max-w-3xl mx-auto px-6 py-4">
+            <ModeSelector
+              currentMode={selectedMode}
+              onModeChange={setSelectedMode}
+              disabled={isStreaming}
+            />
           </div>
         </div>
 

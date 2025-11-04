@@ -1,10 +1,17 @@
-# SaintSal
+# Cookin' Knowledge - Your Gotta Guy™
 
 ## Overview
 
-SaintSal (saintsal.ai) is an enterprise-grade AI platform for professional developers and teams. The platform provides production-ready AI chat, API playground, development console, and comprehensive API key management. Protected by U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments.
+**Cookin' Knowledge** (SaintSal™) is an enterprise-grade AI platform combining features from ChatGPT, Claude, and Grok. Protected by U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments. 
 
-The platform combines enterprise conversational AI (Claude, GPT) with professional developer tools for API testing, environment management, team collaboration, and API key issuance. Built for organizations that need enterprise-grade infrastructure with role-based access controls.
+The platform delivers comprehensive AI capabilities with extended memory systems, team collaboration, web search, voice interaction, deep research, code agents, and enterprise API management. Built for teams that demand more than basic chat - Your Gotta Guy for everything.
+
+### Key Differentiators
+- **Extended Memory System**: Per-user conversation context, preferences, and learning
+- **Team Memory**: Shared organizational knowledge base and collaborative memory
+- **Multi-Mode Chat**: Chat, Web Search, Deep Research, Code Agent, Voice
+- **81% Mobile User Base**: PWA-optimized with voice/walkie-talkie critical features
+- **Apple meets SaintSal™**: Premium SF Pro typography with deep charcoal (#0f0f0f), gold (#E6B325), and neon blue accents (#4DA6FF)
 
 ## User Preferences
 
@@ -69,10 +76,23 @@ Preferred communication style: Simple, everyday language.
 - Migration system via Drizzle Kit
 - Connection pooling with @neondatabase/serverless
 
-**Data Models**:
+**Data Models** (Extended Memory Architecture):
 - Users: Authentication, roles, Stripe subscription integration
-- Conversations: Chat sessions with model tracking
-- Messages: Individual chat messages with role (user/assistant/system)
+- Conversations: Chat sessions with **extended memory** (context, summary, topics, sharing)
+  - Mode: chat, search, research, code, voice
+  - Context: User preferences, writing style, domain knowledge
+  - Summary: AI-generated conversation summaries
+  - Team Sharing: isShared flag, sharedWith user IDs
+- Messages: Advanced message features
+  - searchResults: Web search citations and sources
+  - reasoning: Chain-of-thought for deep research
+  - codeFiles: Multi-file code editing payloads
+  - voiceTranscript: Original voice input
+  - attachments: File upload metadata
+- **Team Memory**: Organizational knowledge base
+  - Shared context, procedures, preferences
+  - Category tagging and usage tracking
+  - Access control and permissions
 - API Environments: Named environment configurations for API testing
 - Environment Variables: Key-value pairs scoped to environments
 - API Request History: Audit trail of API playground requests

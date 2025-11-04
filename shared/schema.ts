@@ -29,6 +29,9 @@ export const sessions = pgTable(
 // User roles enum
 export const userRoleEnum = pgEnum('user_role', ['admin', 'developer', 'viewer']);
 
+// Chat mode enum
+export const chatModeEnum = pgEnum('chat_mode', ['chat', 'search', 'research', 'code', 'voice']);
+
 // User storage table - required for Replit Auth with role-based access
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -47,12 +50,21 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-// Conversations table
+// Conversations table - EXTENDED MEMORY SYSTEM
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: varchar("title").notNull(),
   model: varchar("model").notNull().default('claude-sonnet-4-5'),
+  mode: chatModeEnum("mode").default('chat').notNull(),
+  
+  // Extended Memory Fields
+  context: jsonb("context"), // User preferences, writing style, domain knowledge
+  summary: text("summary"), // AI-generated conversation summary
+  keyTopics: text("key_topics").array(), // Important topics discussed
+  isShared: boolean("is_shared").default(false), // Team memory flag
+  sharedWith: text("shared_with").array(), // User IDs who can access
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -66,13 +78,21 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 
-// Messages table
+// Messages table - ADVANCED FEATURES
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   role: varchar("role").notNull(), // 'user' or 'assistant'
   content: text("content").notNull(),
   model: varchar("model"),
+  
+  // Advanced Features
+  searchResults: jsonb("search_results"), // Web search results with citations
+  reasoning: text("reasoning"), // Chain-of-thought for deep research
+  codeFiles: jsonb("code_files"), // Multi-file code edits
+  voiceTranscript: text("voice_transcript"), // Original voice input
+  attachments: jsonb("attachments"), // File uploads metadata
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -147,11 +167,45 @@ export const insertApiRequestHistorySchema = createInsertSchema(apiRequestHistor
 export type InsertApiRequestHistory = z.infer<typeof insertApiRequestHistorySchema>;
 export type ApiRequestHistory = typeof apiRequestHistory.$inferSelect;
 
+// TEAM MEMORY SYSTEM - Shared organizational knowledge
+export const teamMemory = pgTable("team_memory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"), // Future: multi-org support
+  
+  // Memory Content
+  title: varchar("title").notNull(),
+  content: text("content").notNull(),
+  category: varchar("category"), // 'knowledge', 'procedure', 'context', 'preference'
+  tags: text("tags").array(),
+  
+  // Access Control
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  sharedWith: text("shared_with").array(), // User IDs or 'all'
+  isPublic: boolean("is_public").default(false),
+  
+  // Memory Metadata
+  usageCount: integer("usage_count").default(0),
+  lastUsed: timestamp("last_used"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTeamMemorySchema = createInsertSchema(teamMemory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTeamMemory = z.infer<typeof insertTeamMemorySchema>;
+export type TeamMemory = typeof teamMemory.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   conversations: many(conversations),
   apiEnvironments: many(apiEnvironments),
   apiRequestHistory: many(apiRequestHistory),
+  teamMemories: many(teamMemory),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
@@ -193,5 +247,12 @@ export const apiRequestHistoryRelations = relations(apiRequestHistory, ({ one })
   environment: one(apiEnvironments, {
     fields: [apiRequestHistory.environmentId],
     references: [apiEnvironments.id],
+  }),
+}));
+
+export const teamMemoryRelations = relations(teamMemory, ({ one }) => ({
+  creator: one(users, {
+    fields: [teamMemory.createdBy],
+    references: [users.id],
   }),
 }));
