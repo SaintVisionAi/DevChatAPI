@@ -13,13 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, Plus, StopCircle, Paperclip, Mic, Code2, Image as ImageIcon, Search, Database, Calculator, Sparkles } from "lucide-react";
+import { Send, Plus, StopCircle, Paperclip, Code2, Image as ImageIcon, Search, Database, Calculator, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { User, Conversation, Message } from "@shared/schema";
 import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
+import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
@@ -38,6 +40,14 @@ export default function Chat() {
   const [streamingMessage, setStreamingMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
+  const [autoSpeak, setAutoSpeak] = useState(false); // Auto-speak AI responses
+  
+  // Text-to-Speech for AI responses
+  const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
+    rate: 1.1, // Slightly faster for natural conversation
+    pitch: 1.0,
+    volume: 1.0,
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -138,11 +148,29 @@ export default function Chat() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === "chunk") {
-        setStreamingMessage((prev) => prev + data.content);
+        setStreamingMessage((prev) => {
+          const newMessage = prev + data.content;
+          
+          // Stream voice output if auto-speak is enabled
+          if (autoSpeak && !isSpeaking) {
+            // Speak in chunks when we have complete sentences
+            const sentences = newMessage.match(/[^.!?]+[.!?]+/g);
+            if (sentences && sentences.length > 0) {
+              speak(sentences[sentences.length - 1]);
+            }
+          }
+          
+          return newMessage;
+        });
       } else if (data.type === "status") {
         // Show search status (e.g., "🔍 Searching the web...")
         setStreamingMessage(data.message);
       } else if (data.type === "done") {
+        // Speak final message if auto-speak enabled
+        if (autoSpeak && streamingMessage) {
+          speak(streamingMessage);
+        }
+        
         setIsStreaming(false);
         setStreamingMessage("");
         queryClient.invalidateQueries({
@@ -178,6 +206,16 @@ export default function Chat() {
       setIsStreaming(false);
       setStreamingMessage("");
     }
+    // Stop any ongoing speech
+    cancelSpeech();
+  };
+
+  // Handle voice transcript from walkie-talkie
+  const handleVoiceTranscript = (transcript: string) => {
+    if (!transcript.trim()) return;
+    setInput(transcript);
+    // Auto-send after voice input
+    setTimeout(() => handleSendMessage(transcript), 100);
   };
 
   const handleSuggestion = (suggestion: string) => {
@@ -434,13 +472,20 @@ export default function Chat() {
                   >
                     <Paperclip className="h-4 w-4" />
                   </Button>
+                  <WalkieTalkieButton
+                    onTranscript={handleVoiceTranscript}
+                    disabled={isStreaming}
+                    className="h-7 w-7"
+                  />
                   <Button
                     size="icon"
-                    variant="ghost"
+                    variant={autoSpeak ? "default" : "ghost"}
+                    onClick={() => setAutoSpeak(!autoSpeak)}
                     className="h-7 w-7"
-                    data-testid="button-voice"
+                    data-testid="button-auto-speak"
+                    title={autoSpeak ? "Auto-speak ON" : "Auto-speak OFF"}
                   >
-                    <Mic className="h-4 w-4" />
+                    {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
