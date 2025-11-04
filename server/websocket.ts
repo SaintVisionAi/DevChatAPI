@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { perplexity } from "./perplexity";
+import { orchestrator } from "./providers/orchestrator";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -55,7 +56,7 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
 }
 
 async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
-  const { conversationId, message: userMessage, model, mode } = message;
+  const { conversationId, message: userMessage, model, mode, imageData } = message;
 
   if (!ws.userId) {
     ws.send(JSON.stringify({
@@ -73,14 +74,58 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       content: userMessage,
     });
 
-    // Handle different modes
-    if (mode === 'search') {
-      await handleSearchMode(ws, conversationId, userMessage, model);
-      return;
+    // Get conversation history
+    const messages = await storage.getMessagesByConversationId(conversationId);
+    const conversationHistory = messages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }));
+
+    // Add image data if present
+    if (imageData) {
+      conversationHistory[conversationHistory.length - 1].imageData = imageData;
     }
 
-    // Default: regular chat mode
+    // Use orchestrator to handle all models and modes
+    try {
+      const fullResponse = await orchestrator.processRequest(
+        conversationHistory,
+        ws as any,
+        {
+          model,
+          mode: mode || 'chat',
+          temperature: 0.7,
+          maxTokens: 4096,
+        }
+      );
 
+      // Save assistant message
+      await storage.createMessage({
+        conversationId,
+        role: "assistant",
+        content: fullResponse,
+        model,
+      });
+
+      // Send done signal
+      ws.send(JSON.stringify({
+        type: "done",
+      }));
+
+      return;
+    } catch (error) {
+      // Fallback to legacy handlers if orchestrator fails
+      console.log('Orchestrator failed, falling back to legacy handlers:', error);
+      
+      // Handle different modes with legacy code
+      if (mode === 'search') {
+        await handleSearchMode(ws, conversationId, userMessage, model);
+        return;
+      }
+
+    }
+    
+    // Continue with legacy chat handling...
     // Check if AI clients are available
     if (!anthropic && !openai) {
       ws.send(JSON.stringify({
