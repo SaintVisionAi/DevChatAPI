@@ -39,7 +39,14 @@ export interface IStorage {
   createConversation(data: InsertConversation): Promise<Conversation>;
   getConversationsByUserId(userId: string): Promise<Conversation[]>;
   getConversationById(id: string): Promise<Conversation | undefined>;
-  updateConversation(id: string, title: string): Promise<void>;
+  updateConversation(id: string, updates: {
+    title?: string;
+    context?: any;
+    summary?: string;
+    keyTopics?: string[];
+    isShared?: boolean;
+    sharedWith?: string[];
+  }): Promise<void>;
 
   // Messages
   createMessage(data: InsertMessage): Promise<Message>;
@@ -115,10 +122,17 @@ export class DbStorage implements IStorage {
     return conversation;
   }
 
-  async updateConversation(id: string, title: string): Promise<void> {
+  async updateConversation(id: string, updates: {
+    title?: string;
+    context?: any;
+    summary?: string;
+    keyTopics?: string[];
+    isShared?: boolean;
+    sharedWith?: string[];
+  }): Promise<void> {
     await db
       .update(conversations)
-      .set({ title, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(conversations.id, id));
   }
 

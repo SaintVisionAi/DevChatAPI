@@ -65,6 +65,10 @@ export class AIOrchestrator {
       return this.handleCode(messages, ws, options);
     }
 
+    if (mode === 'voice') {
+      return this.handleVoice(messages, ws, options);
+    }
+
     if (mode === 'vision' && messages.some(m => m.imageData)) {
       return this.handleVision(messages, ws, options);
     }
@@ -226,6 +230,62 @@ export class AIOrchestrator {
         maxOutputTokens: options.maxTokens || 2048,
       }
     );
+  }
+
+  /**
+   * Handle voice requests with ElevenLabs
+   */
+  private async handleVoice(
+    messages: OrchestratorMessage[],
+    ws: WebSocket,
+    options: OrchestratorOptions
+  ): Promise<string> {
+    if (!elevenLabs.isAvailable()) {
+      throw new Error('ElevenLabs API key required for voice features');
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    
+    ws.send(JSON.stringify({
+      type: 'status',
+      message: '🎤 Processing voice...',
+    }));
+
+    // First get text response from AI model
+    let textResponse = '';
+    const model = options.model || 'gpt-4o-mini';
+    
+    if (model.includes('claude')) {
+      textResponse = await this.handleClaude(messages, ws, options);
+    } else if (model.includes('gemini')) {
+      textResponse = await this.handleGemini(messages, ws, options);
+    } else {
+      textResponse = await this.handleOpenAI(messages, ws, options);
+    }
+
+    // Then convert to speech
+    ws.send(JSON.stringify({
+      type: 'status',
+      message: '🔊 Generating speech...',
+    }));
+
+    const audioBuffer = await elevenLabs.textToSpeech(textResponse, {
+      voice: options.voiceSettings?.voice || 'nova',
+      model: 'eleven_turbo_v2',
+      voiceSettings: {
+        stability: options.voiceSettings?.stability || 0.75,
+        similarityBoost: options.voiceSettings?.similarityBoost || 0.75,
+      },
+    });
+
+    // Send audio data back to client
+    ws.send(JSON.stringify({
+      type: 'audio',
+      data: audioBuffer.toString('base64'),
+      text: textResponse,
+    }));
+
+    return textResponse;
   }
 
   /**

@@ -28,6 +28,67 @@ interface AuthenticatedSocket extends WebSocket {
   email?: string;
 }
 
+/**
+ * Update conversation memory with context, summary, and key topics
+ */
+async function updateConversationMemory(
+  conversationId: string,
+  messages: any[],
+  lastResponse: string
+) {
+  try {
+    // Only update memory every 5 messages to avoid too frequent updates
+    if (messages.length % 5 !== 0) return;
+
+    // Get conversation to check current state
+    const conversation = await storage.getConversationById(conversationId);
+    if (!conversation) return;
+
+    // Extract key topics from the last few messages
+    const recentMessages = messages.slice(-10);
+    const content = recentMessages.map(m => m.content).join(' ');
+    
+    // Simple key topic extraction (could be enhanced with NLP)
+    const words = content.toLowerCase().split(/\s+/);
+    const wordFreq = new Map<string, number>();
+    
+    for (const word of words) {
+      if (word.length > 4) { // Only consider words longer than 4 chars
+        wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+      }
+    }
+    
+    const keyTopics = Array.from(wordFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
+
+    // Generate a simple summary
+    const summary = `Conversation with ${messages.length} messages discussing: ${keyTopics.join(', ')}`;
+
+    // Extract user preferences and context
+    const context = {
+      messageCount: messages.length,
+      lastActive: new Date().toISOString(),
+      topics: keyTopics,
+      preferences: {
+        preferredModel: conversation.model,
+        mode: conversation.mode,
+      },
+    };
+
+    // Update the conversation
+    await storage.updateConversation(conversationId, {
+      summary,
+      keyTopics,
+      context,
+    });
+  } catch (error) {
+    console.error('Error updating conversation memory:', error);
+    // Don't throw - this is a non-critical operation
+  }
+}
+
 export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessage, userId: string, email: string) {
   ws.userId = userId;
   ws.email = email;
@@ -106,6 +167,9 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         content: fullResponse,
         model,
       });
+
+      // Update conversation memory (context, summary, key topics)
+      await updateConversationMemory(conversationId, conversationHistory, fullResponse);
 
       // Send done signal
       ws.send(JSON.stringify({
