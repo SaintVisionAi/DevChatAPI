@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Check, Shield, Users, Zap } from "lucide-react";
 
 declare global {
   namespace JSX {
@@ -21,34 +22,134 @@ export default function Pricing() {
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
+
+  const features = [
+    {
+      icon: Shield,
+      title: "Enterprise Security",
+      description: "SOC 2 Type II compliant with end-to-end encryption, SSO, and HIPAA-ready infrastructure"
+    },
+    {
+      icon: Users,
+      title: "Team Collaboration",
+      description: "Multi-user workspaces, role-based access controls, shared environments, and team API keys"
+    },
+    {
+      icon: Zap,
+      title: "Unlimited API Access",
+      description: "No rate limits on API playground, unlimited environments, and comprehensive request history"
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 border-b border-border">
         <div className="max-w-4xl mx-auto text-center">
+          <Badge variant="outline" className="mb-4 border-primary/30">
+            Protected by U.S. Patent #10,290,222
+          </Badge>
           <h1 className="text-5xl font-bold mb-6" data-testid="text-pricing-title">
-            Simple, Transparent Pricing
+            Enterprise Pricing
           </h1>
           <p className="text-xl text-muted-foreground mb-4">
-            Choose the plan that fits your needs. All plans include core features.
+            Production-ready AI platform for professional teams. Start free, scale to enterprise.
           </p>
-          <Badge variant="secondary" className="mb-8">
-            30-day money-back guarantee
-          </Badge>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-16 px-6 bg-muted/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="border-border">
+                <CardHeader>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
+                    <feature.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg mb-2">{feature.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </p>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Stripe Pricing Table */}
-      <section className="px-6 pb-32">
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <stripe-pricing-table 
             pricing-table-id="prctbl_1SIQItGVzsQbCDmmZ97ubwpM"
             publishable-key="pk_live_51SGbmHGVzsQbCDmmc3GGBQKTrxEWfXJBw2wCZqPNJITuNcZdBI8uQa04BkWxBloqDq2fJmKuF2Z5o4MFO0o7uAJU009bQ0K6pw"
           />
+        </div>
+      </section>
+
+      {/* Team Features */}
+      <section className="py-20 px-6 border-t border-border bg-muted/10">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Built for Teams</h2>
+            <p className="text-lg text-muted-foreground">
+              Collaborate with your entire organization on AI development
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="border-border">
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Role-Based Access Control
+                </h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Admin, Developer, and Viewer roles with granular permissions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Team workspaces with shared environments and API configurations</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Audit logs and activity monitoring for compliance</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  API Console & Key Management
+                </h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Generate and manage API keys with custom permissions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Environment variable management across development stages</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>Complete request history and performance analytics</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
