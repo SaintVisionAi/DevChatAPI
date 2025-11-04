@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 // Pages
 import Landing from "@/pages/Landing";
@@ -87,6 +88,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
+          <ServiceWorkerRegistration />
           <Toaster />
           <Router />
         </TooltipProvider>
