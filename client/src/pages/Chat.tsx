@@ -253,10 +253,13 @@ export default function Chat() {
                 {/* Welcome Text */}
                 <div className="space-y-3">
                   <h1 className="text-4xl font-bold" data-testid="text-welcome-title">
-                    Welcome to SaintSal
+                    Cookin' Knowledge
                   </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Your divine AI co-founder with Code Agent, Voice, and File Processing
+                  <p className="text-lg text-accent font-medium">
+                    Your Gotta Guy™
+                  </p>
+                  <p className="text-base text-muted-foreground">
+                    AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
                   </p>
                 </div>
 

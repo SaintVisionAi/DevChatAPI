@@ -96,9 +96,12 @@ export function AppSidebar() {
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer" data-testid="link-home">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-semibold text-sm">SS</span>
+              <span className="text-primary-foreground font-bold text-sm">SS</span>
             </div>
-            <span className="font-semibold text-base">SaintSal™ AI</span>
+            <div>
+              <div className="font-bold text-sm text-primary">SaintSal</div>
+              <div className="text-xs text-accent">Your Gotta Guy™</div>
+            </div>
           </div>
         </Link>
       </SidebarHeader>

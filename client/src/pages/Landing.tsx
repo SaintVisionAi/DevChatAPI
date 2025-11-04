@@ -84,12 +84,12 @@ export default function Landing() {
             Protected by U.S. Patent #10,290,222
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight" data-testid="text-hero-title">
-            Enterprise AI Platform
+            Cookin' Knowledge
             <br />
-            <span className="text-primary">for Professional Developers</span>
+            <span className="text-primary">Your Gotta Guy™</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed" data-testid="text-hero-description">
-            Production-ready AI chat, API playground, and development console. Built for teams that need enterprise-grade infrastructure with role-based access controls and comprehensive API management.
+            Enterprise AI platform with chat, web search, voice, code agent, deep research, API playground, and development console. Everything ChatGPT, Claude, and Grok offer - plus more. Your Gotta Guy for anything.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button size="lg" asChild data-testid="button-get-started">
