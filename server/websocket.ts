@@ -135,13 +135,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
 
-    // Get conversation history
-    const messages = await storage.getMessagesByConversationId(conversationId);
-    const conversationHistory = messages.map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-    }));
-
+    // Re-use conversation history from above
     let fullResponse = "";
 
     // Stream response based on model
