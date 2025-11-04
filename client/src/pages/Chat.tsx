@@ -131,6 +131,7 @@ export default function Chat() {
         conversationId,
         message: messageText,
         model: selectedModel,
+        mode: selectedMode, // Send current mode (chat, search, research, code, voice)
       }));
     };
 
@@ -138,6 +139,9 @@ export default function Chat() {
       const data = JSON.parse(event.data);
       if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
+      } else if (data.type === "status") {
+        // Show search status (e.g., "🔍 Searching the web...")
+        setStreamingMessage(data.message);
       } else if (data.type === "done") {
         setIsStreaming(false);
         setStreamingMessage("");
@@ -410,7 +414,13 @@ export default function Chat() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Message SaintSal... (try '/code' for code generation)"
+                  placeholder={
+                    selectedMode === 'search' ? "Search the web... (Perplexity with citations)" :
+                    selectedMode === 'research' ? "Deep research question..." :
+                    selectedMode === 'code' ? "Describe your code needs..." :
+                    selectedMode === 'voice' ? "Click mic or type..." :
+                    "Message Your Gotta Guy™..."
+                  }
                   className="min-h-[56px] max-h-[200px] resize-none pr-10"
                   disabled={isStreaming}
                   data-testid="input-message"

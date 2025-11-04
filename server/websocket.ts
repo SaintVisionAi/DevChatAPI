@@ -4,6 +4,7 @@ import type { IncomingMessage } from "http";
 import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { perplexity } from "./perplexity";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -54,7 +55,7 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
 }
 
 async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
-  const { conversationId, message: userMessage, model } = message;
+  const { conversationId, message: userMessage, model, mode } = message;
 
   if (!ws.userId) {
     ws.send(JSON.stringify({
@@ -71,6 +72,14 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       role: "user",
       content: userMessage,
     });
+
+    // Handle different modes
+    if (mode === 'search') {
+      await handleSearchMode(ws, conversationId, userMessage, model);
+      return;
+    }
+
+    // Default: regular chat mode
 
     // Check if AI clients are available
     if (!anthropic && !openai) {
@@ -164,6 +173,110 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     ws.send(JSON.stringify({
       type: "error",
       message: error instanceof Error ? error.message : "Failed to generate response",
+    }));
+  }
+}
+
+// WEB SEARCH MODE - Powered by Perplexity with citations
+async function handleSearchMode(
+  ws: AuthenticatedSocket,
+  conversationId: string,
+  userMessage: string,
+  model: string
+) {
+  try {
+    // Get conversation history for context
+    const messages = await storage.getMessagesByConversationId(conversationId);
+    
+    // Build Perplexity message format
+    const perplexityMessages = [
+      {
+        role: 'system' as const,
+        content: 'You are Cookin\' Knowledge, Your Gotta Guy™. Provide accurate, well-researched answers with proper citations. Be comprehensive but concise.',
+      },
+      // Include recent conversation context (last 5 messages for context)
+      ...messages.slice(-5).map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+    ];
+
+    // Ensure we end with user message (Perplexity requirement)
+    if (perplexityMessages[perplexityMessages.length - 1].role !== 'user') {
+      // This shouldn't happen since we just saved the user message, but safety check
+      perplexityMessages.push({
+        role: 'user' as const,
+        content: userMessage,
+      });
+    }
+
+    ws.send(JSON.stringify({
+      type: "status",
+      message: "🔍 Searching the web...",
+    }));
+
+    // Search with Perplexity
+    const searchResult = await perplexity.search(perplexityMessages, {
+      model: 'llama-3.1-sonar-large-128k-online',
+      temperature: 0.2,
+      searchRecencyFilter: 'month',
+      returnRelatedQuestions: true,
+    });
+
+    // Stream the answer
+    const answer = searchResult.answer;
+    const chunkSize = 50; // Stream in chunks for better UX
+    
+    for (let i = 0; i < answer.length; i += chunkSize) {
+      const chunk = answer.slice(i, i + chunkSize);
+      ws.send(JSON.stringify({
+        type: "chunk",
+        content: chunk,
+      }));
+      // Small delay for smooth streaming effect
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
+
+    // Send citations
+    if (searchResult.citations.length > 0) {
+      const citationsText = '\n\n**Sources:**\n' + 
+        searchResult.citations.map((url, idx) => `${idx + 1}. ${url}`).join('\n');
+      
+      ws.send(JSON.stringify({
+        type: "chunk",
+        content: citationsText,
+      }));
+    }
+
+    // Save assistant message with search results
+    await storage.createMessage({
+      conversationId,
+      role: "assistant",
+      content: perplexity.formatWithCitations(searchResult),
+      model: 'perplexity-search',
+      searchResults: {
+        citations: searchResult.citations,
+        usage: searchResult.usage,
+      } as any,
+    });
+
+    ws.send(JSON.stringify({
+      type: "done",
+    }));
+
+  } catch (error) {
+    console.error("Search mode error:", error);
+    
+    let errorMessage = "Search failed. ";
+    if (error instanceof Error && error.message.includes('PERPLEXITY_API_KEY')) {
+      errorMessage += "Please add PERPLEXITY_API_KEY to enable web search.";
+    } else {
+      errorMessage += error instanceof Error ? error.message : "An error occurred";
+    }
+    
+    ws.send(JSON.stringify({
+      type: "error",
+      message: errorMessage,
     }));
   }
 }
