@@ -65,30 +65,37 @@ app.use((req, res, next) => {
 
   wss.on("connection", async (ws, request) => {
     try {
-      // Extract user from the request headers or query params
-      // For testing, create a default user if needed
-      let userId = "default-user";
-      let email = "user@example.com";
+      // Get the authenticated user from session
+      const user = (request as any).user;
       
-      // Try to extract from request if available
-      const url = new URL(request.url || '', `http://${request.headers.host}`);
-      const token = url.searchParams.get('token');
-      
-      // For now, ensure a default user exists
-      const storage = await import("./storage").then(m => m.storage);
-      try {
+      if (user && user.sub && user.email) {
+        // Use authenticated user
+        const userId = user.sub;
+        const email = user.email;
+        
+        console.log("WebSocket connection authenticated for:", email);
+        handleWebSocket(ws, request, userId, email);
+      } else {
+        // Fallback to default user for testing
+        let userId = "default-user";
+        let email = "user@example.com";
+        
         // Ensure the default user exists
-        await storage.upsertUser({
-          id: userId,
-          email: email,
-          firstName: "Default",
-          lastName: "User"
-        });
-      } catch (error) {
-        console.error("Error ensuring user exists:", error);
+        const storage = await import("./storage").then(m => m.storage);
+        try {
+          await storage.upsertUser({
+            id: userId,
+            email: email,
+            firstName: "Default",
+            lastName: "User"
+          });
+        } catch (error) {
+          console.error("Error ensuring user exists:", error);
+        }
+        
+        console.log("WebSocket connection using default user");
+        handleWebSocket(ws, request, userId, email);
       }
-      
-      handleWebSocket(ws, request, userId, email);
     } catch (error) {
       console.error("WebSocket connection error:", error);
       ws.close();

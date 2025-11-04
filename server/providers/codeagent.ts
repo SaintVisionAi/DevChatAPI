@@ -144,7 +144,7 @@ Provide:
 4. Security considerations if relevant
 5. Performance insights`;
 
-    const analysis = await this.callAI(prompt, model, temperature);
+    const analysis = await this.callAI(prompt, model, temperature, ws);
 
     // Send analysis results
     ws.send(JSON.stringify({
@@ -190,7 +190,7 @@ Format the response with:
 - Before/after comparisons for significant changes
 - Inline comments for complex modifications`;
 
-    const edits = await this.callAI(prompt, model, temperature);
+    const edits = await this.callAI(prompt, model, temperature, ws);
 
     // Parse and send individual file edits
     const editedFiles = this.parseFileEdits(edits);
@@ -244,7 +244,7 @@ Ensure the code:
 - Includes necessary configuration
 - Is secure and performant`;
 
-    const newCode = await this.callAI(prompt, model, temperature);
+    const newCode = await this.callAI(prompt, model, temperature, ws);
 
     // Parse created files
     const newFiles = this.parseFileCreation(newCode);
@@ -299,7 +299,7 @@ Provide:
 - Migration guide if breaking changes
 - Performance impact analysis`;
 
-    const refactored = await this.callAI(prompt, model, temperature);
+    const refactored = await this.callAI(prompt, model, temperature, ws);
 
     // Send refactoring plan
     ws.send(JSON.stringify({
@@ -331,7 +331,7 @@ Provide comprehensive assistance including:
 - Best practices and recommendations
 - Additional resources or considerations`;
 
-    const response = await this.callAI(prompt, model, temperature);
+    const response = await this.callAI(prompt, model, temperature, ws);
     return response;
   }
 
@@ -461,24 +461,51 @@ ${files.map(f => `  - ${f.path}`).join('\n')}`;
   private async callAI(
     prompt: string,
     model: string,
-    temperature: number
+    temperature: number,
+    ws?: WebSocket
   ): Promise<string> {
+    let fullResponse = '';
+    
     if (model.includes('claude') && this.anthropic) {
-      const response = await this.anthropic.messages.create({
-        model,
+      const stream = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022', // Use valid model name
         max_tokens: 4000,
         temperature,
         messages: [{ role: 'user', content: prompt }],
+        stream: true,
       });
-      return response.content[0].type === 'text' ? response.content[0].text : '';
+      
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          const text = chunk.delta.text;
+          fullResponse += text;
+          if (ws) {
+            ws.send(JSON.stringify({ type: 'chunk', content: text }));
+          }
+        }
+      }
+      
+      return fullResponse;
     } else if (this.openai) {
-      const response = await this.openai.chat.completions.create({
-        model: model.includes('gpt') ? model : 'gpt-4-turbo-preview',
+      const stream = await this.openai.chat.completions.create({
+        model: model.includes('gpt') ? 'gpt-4-turbo-preview' : 'gpt-4-turbo-preview',
         messages: [{ role: 'user', content: prompt }],
         temperature,
         max_tokens: 4000,
+        stream: true,
       });
-      return response.choices[0]?.message?.content || '';
+      
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          if (ws) {
+            ws.send(JSON.stringify({ type: 'chunk', content }));
+          }
+        }
+      }
+      
+      return fullResponse;
     }
 
     return 'Code Agent unavailable - no AI provider configured';

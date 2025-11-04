@@ -93,22 +93,29 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
   ws.userId = userId;
   ws.email = email;
 
-  console.log(`WebSocket connected for user: ${email}`);
+  console.log(`WebSocket connected for user: ${email}, userId: ${userId}`);
 
   ws.on("message", async (data: Buffer) => {
+    console.log(`Raw message received from ${email}:`, data.toString());
     try {
       const message = JSON.parse(data.toString());
+      console.log(`WebSocket message parsed from ${email}:`, message.type, message.mode || '');
       
       if (message.type === "chat") {
+        console.log('Calling handleChatMessage...');
         await handleChatMessage(ws, message);
       }
     } catch (error) {
-      console.error("WebSocket error:", error);
+      console.error("WebSocket message handler error:", error);
       ws.send(JSON.stringify({
         type: "error",
-        message: "Failed to process message",
+        message: error instanceof Error ? error.message : "Failed to process message",
       }));
     }
+  });
+
+  ws.on("error", (error) => {
+    console.error(`WebSocket error for user ${email}:`, error);
   });
 
   ws.on("close", () => {
@@ -166,6 +173,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Use orchestrator to handle all models and modes
     try {
+      console.log('Using orchestrator for mode:', mode, 'model:', model);
       const fullResponse = await orchestrator.processRequest(
         conversationHistory,
         ws as any,
@@ -196,7 +204,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     } catch (error) {
       // Fallback to legacy handlers if orchestrator fails
-      console.log('Orchestrator failed, falling back to legacy handlers:', error);
+      console.error('Orchestrator failed, falling back to legacy handlers:', error);
       
       // Handle different modes with legacy code
       if (mode === 'search') {

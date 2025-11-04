@@ -12,6 +12,7 @@ The platform delivers comprehensive AI capabilities with extended memory systems
 - **Multi-Mode Chat**: Chat, Web Search, Deep Research, Code Agent, Voice
 - **81% Mobile User Base**: PWA-optimized with voice/walkie-talkie critical features
 - **Apple meets SaintSal™**: Premium SF Pro typography with deep charcoal (#0f0f0f), gold (#E6B325), and neon blue accents (#4DA6FF)
+- **Artifacts Component**: Code preview panel with syntax highlighting, copy and download functionality
 
 ## User Preferences
 
@@ -125,6 +126,32 @@ Preferred communication style: Simple, everyday language.
 - Free: 100 AI messages/month, basic features
 - Pro: 5000 messages/month, priority support, advanced features
 - Enterprise: Custom limits, white-label, dedicated support
+
+## Recent Updates
+
+### Artifacts Component Implementation (Nov 4, 2024)
+- **Created Artifacts Component**: Full-featured code preview panel (`client/src/components/Artifacts.tsx`)
+  - Syntax highlighting with Prism.js for multiple languages
+  - Copy to clipboard functionality
+  - Download as file capability
+  - Dark theme support
+  - Language detection and display
+- **Integrated into Chat Interface**: Added artifacts panel toggle in chat (`client/src/pages/Chat.tsx`)
+  - Toggle button with artifact count badge
+  - Sliding panel (600px width) on right side
+  - Extraction of artifacts from AI messages
+  - State management for multiple artifacts
+- **Enhanced Code Agent**: Updated streaming support in `server/providers/codeagent.ts`
+  - Added WebSocket streaming for real-time responses
+  - Fixed model name compatibility for Claude API
+  - Improved multi-file code handling
+
+### Known Issues
+- **WebSocket AI Response Generation**: Chat messages connect but don't generate AI responses
+  - WebSocket authentication working but message processing fails
+  - Orchestrator not properly streaming responses to client
+  - Affects all chat modes (chat, code, research, etc.)
+- **Requires**: Debug WebSocket message handler and fix AI provider integration
 
 ## External Dependencies
 
