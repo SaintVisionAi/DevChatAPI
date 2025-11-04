@@ -5,13 +5,21 @@ import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Initialize AI clients only if API keys are available
+let anthropic: Anthropic | null = null;
+let openai: OpenAI | null = null;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+if (process.env.ANTHROPIC_API_KEY) {
+  anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
+}
+
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 interface AuthenticatedSocket extends WebSocket {
   userId?: string;
@@ -64,6 +72,15 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       content: userMessage,
     });
 
+    // Check if AI clients are available
+    if (!anthropic && !openai) {
+      ws.send(JSON.stringify({
+        type: "error",
+        message: "AI services not configured. Please add OPENAI_API_KEY or ANTHROPIC_API_KEY to secrets.",
+      }));
+      return;
+    }
+
     // Get conversation history
     const messages = await storage.getMessagesByConversationId(conversationId);
     const conversationHistory = messages.map((msg) => ({
@@ -75,6 +92,14 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Stream response based on model
     if (model.includes("claude") || model.includes("anthropic")) {
+      if (!anthropic) {
+        ws.send(JSON.stringify({
+          type: "error",
+          message: "Anthropic API key not configured. Please add ANTHROPIC_API_KEY to secrets.",
+        }));
+        return;
+      }
+
       const stream = await anthropic.messages.stream({
         model: model === "claude-opus-4-1" ? "claude-opus-4-20250514" : "claude-sonnet-4-20250514",
         max_tokens: 4096,
@@ -95,6 +120,14 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         }
       }
     } else {
+      if (!openai) {
+        ws.send(JSON.stringify({
+          type: "error",
+          message: "OpenAI API key not configured. Please add OPENAI_API_KEY to secrets.",
+        }));
+        return;
+      }
+
       // OpenAI streaming
       const stream = await openai.chat.completions.create({
         model: model === "gpt-5" ? "gpt-4-turbo-preview" : "gpt-4-turbo-preview",
