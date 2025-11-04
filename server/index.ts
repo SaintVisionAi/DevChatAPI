@@ -63,12 +63,36 @@ app.use((req, res, next) => {
   // Setup WebSocket server
   const wss = new WebSocketServer({ server, path: "/ws" });
 
-  wss.on("connection", (ws, request) => {
-    // In production, extract user from session/cookie
-    // For now, using a simple approach
-    const userId = "temp-user-id";
-    const email = "user@example.com";
-    handleWebSocket(ws, request, userId, email);
+  wss.on("connection", async (ws, request) => {
+    try {
+      // Extract user from the request headers or query params
+      // For testing, create a default user if needed
+      let userId = "default-user";
+      let email = "user@example.com";
+      
+      // Try to extract from request if available
+      const url = new URL(request.url || '', `http://${request.headers.host}`);
+      const token = url.searchParams.get('token');
+      
+      // For now, ensure a default user exists
+      const storage = await import("./storage").then(m => m.storage);
+      try {
+        // Ensure the default user exists
+        await storage.upsertUser({
+          id: userId,
+          email: email,
+          firstName: "Default",
+          lastName: "User"
+        });
+      } catch (error) {
+        console.error("Error ensuring user exists:", error);
+      }
+      
+      handleWebSocket(ws, request, userId, email);
+    } catch (error) {
+      console.error("WebSocket connection error:", error);
+      ws.close();
+    }
   });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -117,7 +117,7 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
 }
 
 async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
-  const { conversationId, message: userMessage, model, mode, imageData } = message;
+  let { conversationId, message: userMessage, model, mode, imageData } = message;
 
   if (!ws.userId) {
     ws.send(JSON.stringify({
@@ -128,6 +128,23 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
   }
 
   try {
+    // Create conversation if it doesn't exist
+    if (!conversationId) {
+      const conversation = await storage.createConversation({
+        userId: ws.userId,
+        title: userMessage.substring(0, 100), // Use first 100 chars as title
+        model: model || 'gpt-4o-mini',
+        mode: mode || 'chat',
+      });
+      conversationId = conversation.id;
+      
+      // Send the new conversation ID back to the client
+      ws.send(JSON.stringify({
+        type: "conversationCreated",
+        conversationId,
+      }));
+    }
+
     // Save user message
     await storage.createMessage({
       conversationId,
