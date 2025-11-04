@@ -5,6 +5,7 @@ import { grok } from './grok';
 import { elevenLabs } from './elevenlabs';
 import { perplexity } from '../perplexity';
 import { deepResearch } from './research';
+import { codeAgent } from './codeagent';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 
@@ -58,6 +59,10 @@ export class AIOrchestrator {
 
     if (mode === 'research') {
       return this.handleResearch(messages, ws, options);
+    }
+
+    if (mode === 'code') {
+      return this.handleCode(messages, ws, options);
     }
 
     if (mode === 'vision' && messages.some(m => m.imageData)) {
@@ -146,6 +151,43 @@ export class AIOrchestrator {
         model: options.model || 'claude-3-opus-20240229',
         temperature: options.temperature || 0.7,
         maxSteps: 5,
+      }
+    );
+
+    return result;
+  }
+
+  /**
+   * Handle code agent requests
+   */
+  private async handleCode(
+    messages: OrchestratorMessage[],
+    ws: WebSocket,
+    options: OrchestratorOptions
+  ): Promise<string> {
+    // Get the last user message as the code request
+    const lastUserMessage = messages
+      .filter(m => m.role === 'user')
+      .pop();
+
+    if (!lastUserMessage) {
+      throw new Error('No user message found for code request');
+    }
+
+    // Extract any code files from the message (if provided)
+    // For now, we'll process without files, but this can be enhanced
+    // to accept file uploads and multi-file context
+    const files: any[] = [];
+
+    // Process with code agent
+    const result = await codeAgent.processCodeRequest(
+      lastUserMessage.content,
+      files,
+      ws,
+      {
+        model: options.model || 'claude-3-sonnet-20240229',
+        temperature: options.temperature || 0.3,
+        operation: 'analyze', // Default to analysis
       }
     );
 
