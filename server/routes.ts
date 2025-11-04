@@ -10,6 +10,8 @@ import {
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { fileProcessor } from "./fileprocessor";
+import multer from "multer";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -292,6 +294,79 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).send("Failed to fetch users");
+    }
+  });
+
+  // File Upload Routes
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+      files: 5, // Max 5 files at once
+    },
+  });
+
+  // Single file upload
+  app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file provided" });
+      }
+
+      const processedFile = await fileProcessor.processFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      res.json(processedFile);
+    } catch (error) {
+      console.error("Error processing file:", error);
+      res.status(500).json({ message: "Failed to process file" });
+    }
+  });
+
+  // Multiple file upload
+  app.post("/api/upload/multiple", upload.array("files", 5), async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    try {
+      if (!req.files || !Array.isArray(req.files)) {
+        return res.status(400).json({ message: "No files provided" });
+      }
+
+      const files = req.files.map(file => ({
+        buffer: file.buffer,
+        name: file.originalname,
+        mimeType: file.mimetype,
+      }));
+
+      const processedFiles = await fileProcessor.processMultipleFiles(files);
+      res.json(processedFiles);
+    } catch (error) {
+      console.error("Error processing files:", error);
+      res.status(500).json({ message: "Failed to process files" });
+    }
+  });
+
+  // Get file info
+  app.get("/api/upload/:fileId", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    try {
+      const stats = await fileProcessor.getFileStats(req.params.fileId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting file stats:", error);
+      res.status(404).json({ message: "File not found" });
     }
   });
 }
