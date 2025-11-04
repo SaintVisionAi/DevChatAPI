@@ -1,14 +1,21 @@
+// Reference: javascript_log_in_with_replit, javascript_websocket blueprints
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
 import { registerRoutes } from "./routes";
+import { setupAuth } from "./auth";
+import { handleWebSocket } from "./websocket";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+const server = createServer(app);
 
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
   }
 }
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
@@ -47,7 +54,22 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Setup authentication
+  await setupAuth(app);
+
+  // Register API routes
+  registerRoutes(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server, path: "/ws" });
+
+  wss.on("connection", (ws, request) => {
+    // In production, extract user from session/cookie
+    // For now, using a simple approach
+    const userId = "temp-user-id";
+    const email = "user@example.com";
+    handleWebSocket(ws, request, userId, email);
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
