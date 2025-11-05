@@ -76,20 +76,21 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero Section with SaintSal™ Premium Styling */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-accent/5 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          <Badge variant="outline" className="mb-6 border-primary/30" data-testid="badge-patent">
+          <Badge variant="outline" className="mb-6 border-primary/50 bg-primary/5 text-primary font-medium tracking-wide" data-testid="badge-patent">
             Protected by U.S. Patent #10,290,222
           </Badge>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight" data-testid="text-hero-title">
-            Cookin' Knowledge
+          <h1 className="text-6xl md:text-8xl font-light mb-6 tracking-tight leading-[0.95]" style={{fontWeight: 300}} data-testid="text-hero-title">
+            <span className="font-semibold">Cookin' Knowledge</span>
             <br />
-            <span className="text-primary">Your Gotta Guy™</span>
+            <span className="text-primary font-bold tracking-tighter" style={{textShadow: '0 0 40px rgba(230, 179, 37, 0.3)'}}>Your Gotta Guy™</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed" data-testid="text-hero-description">
-            Enterprise AI platform with chat, web search, voice, code agent, deep research, API playground, and development console. Everything ChatGPT, Claude, and Grok offer - plus more. Your Gotta Guy for anything.
+          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed font-light" data-testid="text-hero-description">
+            AI Chat • <span className="text-accent">Web Search</span> • Voice • Code Agent • <span className="text-accent">Deep Research</span> • Everything
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button size="lg" asChild data-testid="button-get-started">

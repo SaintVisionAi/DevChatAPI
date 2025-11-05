@@ -1,21 +1,27 @@
-# Design Guidelines: Enterprise AI Chat Platform
+# Design Guidelines: SaintSal™ / Cookin' Knowledge Platform
 
 ## Design Approach
 
-**Reference-Based Approach** drawing from:
-- **Claude.ai**: Clean, focused conversational interface with excellent typography hierarchy
-- **ChatGPT**: Accessible chat patterns with clear message threading
-- **Apple HIG**: Minimalist content-focused design with purposeful whitespace
-- **Linear**: Sharp typography and spatial organization
-- **ElevenLabs**: Professional API playground aesthetics
+**SaintSal™ Aesthetic** - "Apple meets SaintSal":
+- **Deep charcoal** (#0f0f0f) black glass foundation
+- **Shiny gold** (#E6B325) with metallic glow for premium feel
+- **Neon blue** (#4DA6FF) highlights for keywords and accents
+- **Skinny viewport** typography using Space Grotesk (narrow, high-contrast)
+- **Tech company vibe** - not corporate, innovative and bold
+- **Patent-protected** (#10,290,222) for escalation/de-escalation in virtual environments
 
-**Core Principle**: Create a professional-grade AI platform that balances conversational accessibility with developer-focused functionality. The interface should feel premium, trustworthy, and effortlessly powerful.
+**Core Principle**: Create a luxury AI platform that feels like premium tech - black glass with gold glow accents, neon blue highlights, and razor-sharp typography. This is "Your Gotta Guy™" - the ultimate AI companion.
+
+**Branding**:
+- **SaintSal™**: The brand identity
+- **Cookin' Knowledge**: The tagline/experience descriptor
+- **Your Gotta Guy™**: The service promise
 
 ---
 
 ## Typography System
 
-**Font Stack**: Inter (primary), SF Mono (code)
+**Font Stack**: Space Grotesk (primary - narrow, high-contrast), SF Mono (code)
 
 **Hierarchy**:
 - **Display**: 48px/56px, weight 700 (landing hero)
