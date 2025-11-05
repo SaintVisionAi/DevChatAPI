@@ -166,11 +166,15 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Use orchestrator to handle all models and modes
     try {
+      // Ensure model has a default value
+      const selectedModel = model || 'gpt-4o-mini';
+      console.log('Processing message with model:', selectedModel, 'mode:', mode || 'chat');
+      
       const fullResponse = await orchestrator.processRequest(
         conversationHistory,
         ws as any,
         {
-          model,
+          model: selectedModel,
           mode: mode || 'chat',
           temperature: 0.7,
           maxTokens: 4096,
