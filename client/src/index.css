@@ -222,7 +222,7 @@
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
 
   html {
@@ -234,11 +234,7 @@
   }
 
   body {
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply font-sans antialiased bg-background text-foreground;
     letter-spacing: -0.011em;
     font-weight: 400;
   }
