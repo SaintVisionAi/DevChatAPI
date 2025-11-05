@@ -222,8 +222,7 @@
 
 @layer base {
   * {
-    /* Using CSS variable directly instead of @apply for border color */
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
 
   html {
@@ -235,10 +234,7 @@
   }
 
   body {
-    @apply antialiased;
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: var(--font-sans);
+    @apply font-sans antialiased bg-background text-foreground;
     letter-spacing: -0.011em;
     font-weight: 400;
   }

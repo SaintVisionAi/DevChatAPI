@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, Plus, StopCircle, Paperclip, Code2, Image as ImageIcon, Search, Database, Calculator, Sparkles, Volume2, VolumeX, FileCode2, PanelRightOpen } from "lucide-react";
+import { Send, Plus, StopCircle, Paperclip, Code2, Image as ImageIcon, Search, Database, Calculator, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -22,7 +22,6 @@ import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { Artifacts } from "@/components/Artifacts";
 
 type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
@@ -42,7 +41,6 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
   const [autoSpeak, setAutoSpeak] = useState(false); // Auto-speak AI responses
-  const [showArtifacts, setShowArtifacts] = useState(false); // Toggle artifacts panel
   
   // Text-to-Speech for AI responses
   const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
@@ -225,40 +223,6 @@ export default function Chat() {
     handleSendMessage(suggestion);
   };
 
-  // Extract artifacts from messages
-  const artifacts = messages?.reduce((acc, message) => {
-    if (message.codeFiles) {
-      const codeArtifacts = Array.isArray(message.codeFiles) 
-        ? message.codeFiles.map((file: any, idx: number) => ({
-            id: `${message.id}-code-${idx}`,
-            type: 'code' as const,
-            title: file.filename || `Code ${idx + 1}`,
-            content: file.content || '',
-            language: file.language || 'javascript',
-            timestamp: new Date(message.createdAt!),
-          }))
-        : [];
-      acc.push(...codeArtifacts);
-    }
-    
-    if (message.attachments) {
-      const fileArtifacts = Array.isArray(message.attachments)
-        ? message.attachments.map((file: any, idx: number) => ({
-            id: `${message.id}-file-${idx}`,
-            type: (file.type === 'image' ? 'image' : 'file') as const,
-            title: file.name || `File ${idx + 1}`,
-            content: file.content || file.url || '',
-            mimeType: file.mimeType,
-            size: file.size,
-            timestamp: new Date(message.createdAt!),
-          }))
-        : [];
-      acc.push(...fileArtifacts);
-    }
-    
-    return acc;
-  }, [] as any[]) || [];
-
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -316,10 +280,8 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Main Chat Area with Artifacts */}
-      <div className="flex-1 flex">
-        {/* Chat Content */}
-        <div className={`flex-1 flex flex-col ${showArtifacts ? 'border-r border-border' : ''}`}>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
         {/* Messages or Empty State */}
         <div className="flex-1 overflow-y-auto">
           {showEmptyState ? (
@@ -525,21 +487,6 @@ export default function Chat() {
                   >
                     {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                   </Button>
-                  {artifacts.length > 0 && (
-                    <Button
-                      size="icon"
-                      variant={showArtifacts ? "default" : "ghost"}
-                      onClick={() => setShowArtifacts(!showArtifacts)}
-                      className="h-7 w-7 relative"
-                      title={`${showArtifacts ? 'Hide' : 'Show'} artifacts (${artifacts.length})`}
-                      data-testid="button-toggle-artifacts"
-                    >
-                      <FileCode2 className="h-4 w-4" />
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">
-                        {artifacts.length}
-                      </span>
-                    </Button>
-                  )}
                 </div>
               </div>
               {isStreaming ? (
@@ -569,18 +516,7 @@ export default function Chat() {
             </div>
           </div>
         </div>
-      </div> {/* End of Chat Content */}
-
-      {/* Artifacts Panel */}
-      {showArtifacts && (
-        <div className="w-[600px] h-full">
-          <Artifacts 
-            artifacts={artifacts}
-            onClose={() => setShowArtifacts(false)}
-          />
-        </div>
-      )}
-    </div> {/* End of Main Area with Artifacts */}
+      </div>
     </div>
   );
 }
