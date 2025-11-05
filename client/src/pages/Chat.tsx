@@ -75,13 +75,13 @@ export default function Chat() {
   });
 
   const createConversationMutation = useMutation({
-    mutationFn: async (title: string) => {
+    mutationFn: async (title: string): Promise<Conversation> => {
       return await apiRequest("POST", "/api/conversations", {
         title,
         model: selectedModel,
-      });
+      }) as Promise<Conversation>;
     },
-    onSuccess: (newConversation) => {
+    onSuccess: (newConversation: Conversation) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setSelectedConversationId(newConversation.id);
     },
