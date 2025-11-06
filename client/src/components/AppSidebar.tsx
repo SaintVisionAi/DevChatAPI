@@ -91,7 +91,7 @@ export function AppSidebar() {
   const isAdmin = user?.role === "admin";
 
   return (
-    <Sidebar data-testid="sidebar-main">
+    <Sidebar collapsible="icon" data-testid="sidebar-main">
       <SidebarHeader className="p-4">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer" data-testid="link-home">
