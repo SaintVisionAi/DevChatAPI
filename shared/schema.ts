@@ -32,10 +32,11 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'developer', 'viewer']
 // Chat mode enum
 export const chatModeEnum = pgEnum('chat_mode', ['chat', 'search', 'research', 'code', 'voice']);
 
-// User storage table - required for Replit Auth with role-based access
+// User storage table - Simple DB authentication with role-based access
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash"), // For simple authentication
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
