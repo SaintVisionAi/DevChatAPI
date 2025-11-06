@@ -34,6 +34,7 @@ export interface IStorage {
   // Users
   upsertUser(user: UpsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
 
   // Conversations
   createConversation(data: InsertConversation): Promise<Conversation>;
@@ -96,6 +97,11 @@ export class DbStorage implements IStorage {
 
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return user;
   }
 

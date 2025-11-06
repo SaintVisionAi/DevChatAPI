@@ -13,6 +13,7 @@ import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistratio
 
 // Pages
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Chat from "@/pages/Chat";
 import Playground from "@/pages/Playground";
@@ -36,16 +37,21 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : !isAuthenticated ? (
         <>
           {/* Public routes */}
           <Route path="/" component={Landing} />
+          <Route path="/login" component={Login} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/docs" component={ApiDocs} />
           <Route path="/legal/terms" component={Terms} />
           <Route path="/legal/privacy" component={Privacy} />
           <Route path="/legal/baa" component={Baa} />
-          <Route component={NotFound} />
+          <Route component={Login} />
         </>
       ) : (
         <>

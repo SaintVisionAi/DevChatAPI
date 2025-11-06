@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { registerRoutes } from "./routes";
-import { setupAuth } from "./auth";
+import { setupSimpleAuth, sessionStore as simpleSessionStore } from "./simple-auth";
 import { handleWebSocket } from "./websocket";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -54,8 +54,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Setup authentication
-  await setupAuth(app);
+  // Setup simple authentication
+  await setupSimpleAuth(app);
 
   // Register API routes
   registerRoutes(app);
@@ -91,19 +91,16 @@ app.use((req, res, next) => {
       const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
 
       // Load session from PostgreSQL
-      const { sessionStore } = await import("./auth");
-
-      sessionStore.get(sessionId, async (err: any, session: any) => {
-        if (err || !session || !session.passport || !session.passport.user) {
+      simpleSessionStore.get(sessionId, async (err: any, session: any) => {
+        if (err || !session || !session.userId || !session.user) {
           console.error("WebSocket connection rejected: Invalid or expired session", err);
           ws.close(1008, "Unauthorized - Invalid session");
           return;
         }
 
         // Extract user from session
-        const user = session.passport.user;
-        const userId = user.claims?.sub;
-        const email = user.claims?.email;
+        const userId = session.userId;
+        const email = session.user.email;
 
         if (!userId || !email) {
           console.error("WebSocket connection rejected: No user in session");
