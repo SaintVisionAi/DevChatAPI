@@ -553,21 +553,40 @@ export default function ChatFixed() {
           )}
         </div>
 
-        {/* Mode Selector */}
-        <div className="border-t border-border bg-muted/10">
-          <div className="max-w-3xl mx-auto px-6 py-4">
-            <ModeSelector
-              currentMode={selectedMode}
-              onModeChange={setSelectedMode}
-              disabled={isStreaming}
-            />
+        {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
+        <div className="border-t border-border bg-background/95 backdrop-blur sticky bottom-0 z-50 pb-safe">
+          {/* Mode Selector - Clean at Bottom for Mobile */}
+          <div className="border-b border-border bg-muted/5">
+            <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1.5 sm:py-2">
+              <ModeSelector
+                currentMode={selectedMode}
+                onModeChange={setSelectedMode}
+                disabled={isStreaming}
+                className="scale-90 sm:scale-100 origin-center"
+              />
+            </div>
           </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="border-t border-border bg-background">
-          <div className="max-w-3xl mx-auto px-6 py-4">
-            <div className="flex gap-2">
+          
+          <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 sm:py-3">
+            {/* Mobile-First: Voice Mode Prominent on Small Screens */}
+            {selectedMode === 'voice' && (
+              <div className="md:hidden mb-2 text-center">
+                <Badge variant="default" className="bg-primary text-primary-foreground animate-pulse">
+                  <Mic className="h-3 w-3 mr-1" />
+                  Voice Mode Active - Press and Hold Mic
+                </Badge>
+              </div>
+            )}
+            
+            <div className="flex gap-1 sm:gap-2">
+              {/* Mobile: Walkie-Talkie FIRST on small screens */}
+              <div className="md:hidden">
+                <WalkieTalkieButton
+                  onTranscript={handleVoiceTranscript}
+                  className="h-[50px] w-[50px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                />
+              </div>
+              
               <div className="flex-1 relative">
                 <Textarea
                   value={input}
@@ -579,14 +598,14 @@ export default function ChatFixed() {
                     }
                   }}
                   placeholder={
-                    selectedMode === 'chat' ? "Message Your Gotta Guy™..." :
-                    selectedMode === 'search' ? "Search the web... (Perplexity with citations)" :
-                    selectedMode === 'research' ? "Deep research question..." :
-                    selectedMode === 'code' ? "Describe your code needs..." :
-                    selectedMode === 'voice' ? "Click mic or type..." :
+                    selectedMode === 'chat' ? "Your Gotta Guy™..." :
+                    selectedMode === 'search' ? "Search web..." :
+                    selectedMode === 'research' ? "Deep research..." :
+                    selectedMode === 'code' ? "Code needs..." :
+                    selectedMode === 'voice' ? "Press mic 🎤" :
                     "Message..."
                   }
-                  className="min-h-[60px] pr-20 resize-none"
+                  className="min-h-[50px] sm:min-h-[60px] pr-12 sm:pr-20 resize-none text-sm sm:text-base"
                   disabled={isStreaming}
                   data-testid="input-message"
                 />
@@ -594,7 +613,7 @@ export default function ChatFixed() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-2 top-2"
+                  className="absolute right-1 top-1 h-8 w-8 sm:right-2 sm:top-2"
                   onClick={() => fileInputRef.current?.click()}
                   data-testid="button-attach"
                 >
@@ -616,30 +635,34 @@ export default function ChatFixed() {
                 data-testid="input-file"
               />
 
-              {/* Walkie-Talkie Button */}
-              <WalkieTalkieButton
-                onTranscript={handleVoiceTranscript}
-                className="h-[60px]"
-              />
+              {/* Desktop: Walkie-Talkie normal position */}
+              <div className="hidden md:block">
+                <WalkieTalkieButton
+                  onTranscript={handleVoiceTranscript}
+                  className="h-[60px]"
+                />
+              </div>
 
               {/* Send/Stop Button */}
               {isStreaming ? (
                 <Button
                   onClick={handleStopGeneration}
-                  className="h-[60px]"
+                  className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto"
                   variant="destructive"
                   data-testid="button-stop"
                 >
-                  <StopCircle className="h-5 w-5" />
+                  <StopCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline ml-2">Stop</span>
                 </Button>
               ) : (
                 <Button
                   onClick={() => handleSendMessage()}
-                  className="h-[60px]"
-                  disabled={!input.trim()}
+                  className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto bg-primary hover:bg-primary/90"
+                  disabled={!input.trim() && !selectedImage}
                   data-testid="button-send"
                 >
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline ml-2">Send</span>
                 </Button>
               )}
             </div>

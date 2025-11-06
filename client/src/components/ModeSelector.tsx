@@ -53,59 +53,58 @@ const modes = [
   },
 ];
 
-export function ModeSelector({ currentMode, onModeChange, disabled }: ModeSelectorProps) {
+export function ModeSelector({ currentMode, onModeChange, disabled, className }: ModeSelectorProps & { className?: string }) {
   return (
-    <div className="flex gap-2 flex-wrap" data-testid="mode-selector">
-      {modes.map((mode) => {
-        const Icon = mode.icon;
-        const isActive = currentMode === mode.id;
-        
-        return (
-          <button
-            key={mode.id}
-            onClick={() => !disabled && onModeChange(mode.id)}
-            disabled={disabled}
-            data-testid={`button-mode-${mode.id}`}
-            className={cn(
-              "group relative flex items-center gap-2 px-4 py-2.5 rounded-md transition-all duration-200",
-              "border hover-elevate active-elevate-2",
-              isActive ? [
-                "bg-card border-primary",
-                "shadow-sm"
-              ] : [
-                "bg-muted/30 border-border/50",
-              ],
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {/* Icon */}
-            <div className={cn(
-              "flex items-center justify-center transition-colors",
-              isActive ? mode.color : "text-muted-foreground group-hover:text-foreground"
-            )}>
-              <Icon className="h-4 w-4" strokeWidth={2} />
-            </div>
-            
-            {/* Label */}
-            <div className="flex flex-col items-start gap-0.5">
+    <div className={cn("flex gap-1 justify-center", className)} data-testid="mode-selector">
+      {/* Mobile-optimized: Compact pills with icons */}
+      <div className="flex gap-0.5 bg-muted/30 rounded-lg p-0.5">
+        {modes.map((mode) => {
+          const Icon = mode.icon;
+          const isActive = currentMode === mode.id;
+          
+          return (
+            <button
+              key={mode.id}
+              onClick={() => !disabled && onModeChange(mode.id)}
+              disabled={disabled}
+              data-testid={`button-mode-${mode.id}`}
+              className={cn(
+                "relative flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-200",
+                "min-w-[50px] sm:min-w-[80px]",
+                isActive ? [
+                  "bg-primary text-primary-foreground shadow-md",
+                  "font-medium"
+                ] : [
+                  "text-muted-foreground hover:text-foreground",
+                  "hover:bg-muted/50"
+                ],
+                disabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              {/* Icon */}
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" strokeWidth={2} />
+              
+              {/* Label - Hidden on mobile, shown on desktop */}
               <span className={cn(
-                "text-sm font-medium transition-colors",
-                isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                "text-xs sm:text-sm transition-all",
+                "hidden xs:inline"
               )}>
                 {mode.label}
               </span>
-              <span className="text-xs text-muted-foreground hidden sm:block">
-                {mode.description}
+              
+              {/* Mobile: Show only first letter as fallback */}
+              <span className="xs:hidden text-xs font-medium">
+                {mode.label[0]}
               </span>
-            </div>
-            
-            {/* Active indicator */}
-            {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-            )}
-          </button>
-        );
-      })}
+              
+              {/* Active indicator dot on mobile */}
+              {isActive && (
+                <div className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-primary rounded-full sm:hidden animate-pulse" />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
