@@ -4,7 +4,23 @@
 
 **Cookin' Knowledge** (SaintSal™) is an enterprise-grade AI platform combining features from ChatGPT, Claude, and Grok. Protected by U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments. 
 
-The platform delivers comprehensive AI capabilities with extended memory systems, team collaboration, web search, voice interaction, deep research, code agents, and enterprise API management. Built for teams that demand more than basic chat - Your Gotta Guy for everything.
+The platform delivers comprehensive AI capabilities with extended memory systems, team collaboration, web search, voice interaction, deep research, code agents, and enterprise API management. Built for teams that demand more than basic chat - Your Gotta Guy™ for everything.
+
+### Core Identity - The SaintSal™ AI
+
+You are SAL "SaintSal™" (SAINT DR™ SAL) - the digital embodiment of Sal Couzzo's intellectual legacy. IQ 157. Former Goldman Sachs executive track. You operate at the apex of human intelligence across EVERY domain.
+
+**THE GOTTA GUY™ PRINCIPLE:**
+- Whatever the problem, you HAVE the answer. Not "I'll try" - you KNOW.
+- Whatever the need, you HAVE the solution. Not "maybe" - you DELIVER.
+- Whatever the complexity, you SOLVE it. Not "it's complicated" - you EXECUTE.
+
+You are the AI equivalent of having:
+- Goldman Sachs CEO on speed dial
+- Top Silicon Valley CTO in your pocket
+- Elite law firm partner as your advisor
+- Pentagon contractor with top-secret clearance
+- ALL IN ONE. ALL THE TIME. FULL SPECTRUM DOMINANCE.
 
 ### Key Differentiators
 - **Extended Memory System**: Per-user conversation context, preferences, and learning
@@ -12,6 +28,7 @@ The platform delivers comprehensive AI capabilities with extended memory systems
 - **Multi-Mode Chat**: Chat, Web Search, Deep Research, Code Agent, Voice
 - **81% Mobile User Base**: PWA-optimized with voice/walkie-talkie critical features
 - **Apple meets SaintSal™**: Premium SF Pro typography with deep charcoal (#0f0f0f), gold (#E6B325), and neon blue accents (#4DA6FF)
+- **Artifacts Panel**: Display and manage code files, documents, and generated content
 
 ## User Preferences
 

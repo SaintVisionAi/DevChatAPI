@@ -578,12 +578,12 @@ export default function ChatFixed() {
               </div>
             )}
             
-            <div className="flex gap-1 sm:gap-2">
-              {/* Mobile: Walkie-Talkie FIRST on small screens */}
+            <div className="flex gap-1 sm:gap-2 items-end">
+              {/* Mobile: Walkie-Talkie FIRST on small screens - CLEAN */}
               <div className="md:hidden">
                 <WalkieTalkieButton
                   onTranscript={handleVoiceTranscript}
-                  className="h-[50px] w-[50px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                  className="h-[50px] w-[50px]"
                 />
               </div>
               

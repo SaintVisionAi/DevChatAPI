@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { perplexity } from "./perplexity";
+import { getSaintSalPrompt } from "./providers/saintsal-prompt";
 // import { orchestrator } from "./providers/orchestrator"; // Module doesn't exist - commented out
 
 // Initialize AI clients only if API keys are available
@@ -164,10 +165,16 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Get conversation history
     const messages = await storage.getMessagesByConversationId(conversationId);
-    const conversationHistory = messages.map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-    }));
+    
+    // Build conversation with SaintSal system prompt
+    const systemPrompt = getSaintSalPrompt(mode || 'chat');
+    const conversationHistory = [
+      { role: "system" as const, content: systemPrompt },
+      ...messages.map((msg) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }))
+    ];
 
     // Handle image analysis with Gemini if image is present
     if (imageData) {
