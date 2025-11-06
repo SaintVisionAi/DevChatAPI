@@ -173,6 +173,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     
     // Continue with legacy chat handling...
     // Check if AI clients are available
+    console.log('AI Clients Status - Anthropic:', !!anthropic, 'OpenAI:', !!openai);
     if (!anthropic && !openai) {
       ws.send(JSON.stringify({
         type: "error",
@@ -185,6 +186,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     let fullResponse = "";
 
     // Stream response based on model
+    console.log('Processing chat with model:', model);
     if (model.includes("claude") || model.includes("anthropic")) {
       if (!anthropic) {
         ws.send(JSON.stringify({
@@ -194,6 +196,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         return;
       }
 
+      console.log('Using Anthropic to generate response...');
       const stream = await anthropic.messages.stream({
         model: model === "claude-opus-4-1" ? "claude-opus-4-20250514" : "claude-sonnet-4-20250514",
         max_tokens: 4096,
