@@ -1,5 +1,5 @@
 // Reference: javascript_websocket, javascript_anthropic_ai_integrations, javascript_openai_ai_integrations blueprints
-import { WebSocket } from "ws";
+import WebSocket from "ws";
 import type { IncomingMessage } from "http";
 import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
@@ -197,6 +197,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       }
 
       console.log('Using Anthropic to generate response...');
+      console.log('Model:', model, 'Messages:', conversationHistory.length);
       try {
         const stream = await anthropic.messages.stream({
           model: model === "claude-opus-4-1" ? "claude-3-opus-20240229" : "claude-3-5-sonnet-20241022",
