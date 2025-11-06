@@ -91,8 +91,7 @@ app.use((req, res, next) => {
       const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
 
       // Load session from PostgreSQL
-      const { getSession } = await import("./auth");
-      const sessionStore = (getSession() as any).store;
+      const { sessionStore } = await import("./auth");
 
       sessionStore.get(sessionId, async (err: any, session: any) => {
         if (err || !session || !session.passport || !session.passport.user) {

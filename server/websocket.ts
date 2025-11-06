@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { perplexity } from "./perplexity";
-import { orchestrator } from "./providers/orchestrator";
+// import { orchestrator } from "./providers/orchestrator"; // Module doesn't exist - commented out
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -164,46 +164,11 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       conversationHistory[conversationHistory.length - 1].imageData = imageData;
     }
 
-    // Use orchestrator to handle all models and modes
-    try {
-      const fullResponse = await orchestrator.processRequest(
-        conversationHistory,
-        ws as any,
-        {
-          model,
-          mode: mode || 'chat',
-          temperature: 0.7,
-          maxTokens: 4096,
-        }
-      );
-
-      // Save assistant message
-      await storage.createMessage({
-        conversationId,
-        role: "assistant",
-        content: fullResponse,
-        model,
-      });
-
-      // Update conversation memory (context, summary, key topics)
-      await updateConversationMemory(conversationId, conversationHistory, fullResponse);
-
-      // Send done signal
-      ws.send(JSON.stringify({
-        type: "done",
-      }));
-
+    // Orchestrator module doesn't exist - skip directly to legacy handlers
+    // Handle different modes
+    if (mode === 'search') {
+      await handleSearchMode(ws, conversationId, userMessage, model);
       return;
-    } catch (error) {
-      // Fallback to legacy handlers if orchestrator fails
-      console.log('Orchestrator failed, falling back to legacy handlers:', error);
-      
-      // Handle different modes with legacy code
-      if (mode === 'search') {
-        await handleSearchMode(ws, conversationId, userMessage, model);
-        return;
-      }
-
     }
     
     // Continue with legacy chat handling...
