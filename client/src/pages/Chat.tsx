@@ -490,12 +490,42 @@ export default function ChatFixed() {
                       <div className="flex-1">
                         <Card className="p-4">
                           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          {/* Display citations if present */}
+                          {message.searchResults && message.searchResults.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
+                              <div className="space-y-1">
+                                {message.searchResults.map((citation, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                                      {idx + 1}
+                                    </Badge>
+                                    <a 
+                                      href={citation}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary hover:underline truncate"
+                                      data-testid={`citation-${idx}`}
+                                    >
+                                      {citation}
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </Card>
                         <div className="text-xs text-muted-foreground mt-1 px-1 flex items-center gap-2">
                           {format(new Date(message.createdAt!), "h:mm a")}
                           {message.model && (
                             <Badge variant="outline" className="text-xs">
                               {message.model}
+                            </Badge>
+                          )}
+                          {message.mode === 'search' && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Search className="h-3 w-3 mr-1" />
+                              Web Search
                             </Badge>
                           )}
                         </div>
