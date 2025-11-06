@@ -17,6 +17,33 @@ The platform delivers comprehensive AI capabilities with extended memory systems
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### 2025-11-06: Critical Security Fix - WebSocket Authentication
+- **FIXED**: WebSocket layer was using hard-coded "default-user", causing complete data leakage between users
+- **SOLUTION**: Implemented proper session-based WebSocket authentication
+  - WebSocket upgrade handler now extracts session cookie from request headers
+  - Loads session from PostgreSQL session store (connect-pg-simple)
+  - Extracts authenticated user from session.passport.user.claims
+  - Rejects connections without valid sessions (401 close code)
+- **VERIFIED**: Multi-user isolation test passed
+  - User A's conversations stored under User A's ID
+  - User B cannot see User A's conversations
+  - Each user sees only their own data
+- **STATUS**: Production-ready core functionality confirmed
+
+### 2025-11-06: Server Startup & Dependencies
+- Installed missing Replit Vite plugins (@replit/vite-plugin-*)
+- Installed autoprefixer for PostCSS compatibility
+- Installed @tailwindcss/typography for rich text support
+- Fixed CSS import order to resolve PostCSS warnings
+
+### 2025-11-06: Premium SaintSal™ Design
+- Applied deep black background (#0f0f0f at 2% lightness)
+- Configured vibrant metallic gold (#E6B325) with glow effects
+- Added neon blue accent (#4DA6FF) for highlights
+- Imported Space Grotesk font for "Apple meets SaintSal" aesthetic
+
 ## System Architecture
 
 ### Frontend Architecture
