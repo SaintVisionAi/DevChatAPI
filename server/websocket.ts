@@ -145,12 +145,22 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       }));
     }
 
-    // Save user message
-    await storage.createMessage({
+    // Save user message with attachments if present
+    const messageData: any = {
       conversationId,
       role: "user",
       content: userMessage,
-    });
+    };
+
+    if (imageData) {
+      messageData.attachments = [{
+        type: 'image',
+        data: imageData,
+        mimeType: imageData.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
+      }];
+    }
+
+    await storage.createMessage(messageData);
 
     // Get conversation history
     const messages = await storage.getMessagesByConversationId(conversationId);
@@ -159,9 +169,31 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       content: msg.content,
     }));
 
-    // Add image data if present
+    // Handle image analysis with Gemini if image is present
     if (imageData) {
-      conversationHistory[conversationHistory.length - 1].imageData = imageData;
+      const { gemini } = await import("./providers/gemini");
+      
+      if (gemini.isAvailable()) {
+        const prompt = `${userMessage}\n\nPlease analyze the image provided.`;
+        const response = await gemini.processImage(imageData, prompt, ws, {
+          model: 'gemini-1.5-flash',
+          temperature: 0.7,
+        });
+        
+        // Save AI response
+        await storage.createMessage({
+          conversationId,
+          role: "assistant",
+          content: response,
+          model: "gemini-1.5-flash",
+        });
+
+        ws.send(JSON.stringify({ type: "done" }));
+        
+        // Update conversation memory
+        await updateConversationMemory(conversationId, messages, response);
+        return;
+      }
     }
 
     // Orchestrator module doesn't exist - skip directly to legacy handlers

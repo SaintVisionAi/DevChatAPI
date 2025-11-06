@@ -59,6 +59,7 @@ export default function ChatFixed() {
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
     rate: 1.1,
@@ -67,6 +68,7 @@ export default function ChatFixed() {
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -156,7 +158,11 @@ export default function ChatFixed() {
         message: messageText,
         model: selectedModel,
         mode: selectedMode,
+        imageData: selectedImage,
       }));
+      
+      // Clear image after sending
+      setSelectedImage(null);
     };
 
     let fullMessage = "";
@@ -243,11 +249,27 @@ export default function ChatFixed() {
     setSelectedConversationId(null);
     setInput("");
     setSelectedMode('chat');
+    setSelectedImage(null);
   };
 
   const handleSuggestion = (suggestion: string) => {
     setInput(suggestion);
     handleSendMessage(suggestion);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result as string);
+      toast({
+        title: "Image attached",
+        description: "Your image is ready to send with your message",
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   if (authLoading) {
@@ -543,12 +565,26 @@ export default function ChatFixed() {
                   variant="ghost"
                   size="icon"
                   className="absolute right-2 top-2"
-                  disabled
+                  onClick={() => fileInputRef.current?.click()}
                   data-testid="button-attach"
                 >
-                  <Paperclip className="h-4 w-4" />
+                  {selectedImage ? (
+                    <ImageIcon className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Paperclip className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
+              
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+                data-testid="input-file"
+              />
 
               {/* Walkie-Talkie Button */}
               <WalkieTalkieButton
