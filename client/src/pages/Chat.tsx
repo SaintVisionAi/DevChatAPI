@@ -159,13 +159,40 @@ export default function ChatFixed() {
       }));
     };
 
-    ws.onmessage = (event) => {
+    let fullMessage = "";
+    ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
       if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
+        fullMessage += data.content;
       } else if (data.type === "done") {
-        if (autoSpeak && streamingMessage) {
-          speak(streamingMessage);
+        // Auto-speak in voice mode OR if auto-speak is enabled
+        if ((selectedMode === 'voice' || autoSpeak) && fullMessage) {
+          // Use ElevenLabs TTS for high-quality voice
+          try {
+            const response = await fetch('/api/voice/tts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ text: fullMessage }),
+            });
+            
+            if (response.ok) {
+              const audioBlob = await response.blob();
+              const audioUrl = URL.createObjectURL(audioBlob);
+              const audio = new Audio(audioUrl);
+              await audio.play();
+            } else {
+              // Fallback to browser TTS
+              speak(fullMessage);
+            }
+          } catch (error) {
+            console.error('TTS error:', error);
+            // Fallback to browser TTS
+            speak(fullMessage);
+          }
         }
         
         setIsStreaming(false);

@@ -369,4 +369,67 @@ export function registerRoutes(app: Express) {
       res.status(404).json({ message: "File not found" });
     }
   });
+
+  // Voice endpoints
+  // Text to Speech
+  app.post("/api/voice/tts", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    try {
+      const { text, voiceId } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ message: "Text is required" });
+      }
+
+      const { elevenLabs } = await import("./providers/elevenlabs");
+      
+      if (!elevenLabs.isAvailable()) {
+        return res.status(503).json({ message: "Text-to-speech service not available" });
+      }
+
+      const audioBuffer = await elevenLabs.textToSpeech(text, { 
+        voiceId: voiceId || "21m00Tcm4TlvDq8ikWAM" 
+      });
+      
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.send(audioBuffer);
+    } catch (error) {
+      console.error("TTS error:", error);
+      res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
+
+  // Speech to Text (using OpenAI Whisper)
+  app.post("/api/voice/stt", upload.single("audio"), async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Audio file is required" });
+      }
+
+      if (!openai) {
+        return res.status(503).json({ message: "Speech recognition not available" });
+      }
+
+      // Convert buffer to File object for OpenAI
+      const file = new File([req.file.buffer], "audio.webm", { type: req.file.mimetype });
+      
+      const transcription = await openai.audio.transcriptions.create({
+        file: file,
+        model: "whisper-1",
+        language: "en",
+      });
+
+      res.json({ text: transcription.text });
+    } catch (error) {
+      console.error("STT error:", error);
+      res.status(500).json({ message: "Failed to transcribe audio" });
+    }
+  });
 }
