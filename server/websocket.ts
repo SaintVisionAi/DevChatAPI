@@ -203,6 +203,16 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
     
+    if (mode === 'code') {
+      await handleCodeMode(ws, conversationId, userMessage, model);
+      return;
+    }
+    
+    if (mode === 'research') {
+      await handleResearchMode(ws, conversationId, userMessage, model);
+      return;
+    }
+    
     // Continue with legacy chat handling...
     // Check if AI clients are available
     console.log('AI Clients Status - Anthropic:', !!anthropic, 'OpenAI:', !!openai);
@@ -426,6 +436,195 @@ async function handleSearchMode(
     ws.send(JSON.stringify({
       type: "error",
       message: errorMessage,
+    }));
+  }
+}
+
+// CODE MODE - Multi-file code generation and editing
+async function handleCodeMode(
+  ws: AuthenticatedSocket,
+  conversationId: string,
+  userMessage: string,
+  model: string
+) {
+  try {
+    const { codeAgent } = await import("./providers/codeagent");
+    
+    // Parse for /code command or file references
+    const files = [];
+    
+    // Process code request
+    const response = await codeAgent.processCodeRequest(
+      userMessage,
+      files,
+      ws as any,
+      {
+        model: model.includes('claude') ? 'claude-sonnet-4-5-20250929' : 'gpt-4o',
+        temperature: 0.3,
+        operation: 'analyze',
+      }
+    );
+    
+    // Save the response
+    await storage.createMessage({
+      conversationId,
+      role: "assistant",
+      content: response,
+      model: model,
+      codeFiles: files,
+    });
+    
+    ws.send(JSON.stringify({ type: "done" }));
+  } catch (error) {
+    console.error('Code mode error:', error);
+    ws.send(JSON.stringify({
+      type: "error",
+      message: "Failed to process code request",
+    }));
+  }
+}
+
+// RESEARCH MODE - Deep chain-of-thought analysis
+async function handleResearchMode(
+  ws: AuthenticatedSocket,
+  conversationId: string,
+  userMessage: string,
+  model: string
+) {
+  try {
+    ws.send(JSON.stringify({
+      type: "chunk",
+      content: "🔬 Starting deep research...\n\n",
+    }));
+    
+    // Step 1: Break down the question
+    ws.send(JSON.stringify({
+      type: "chunk",
+      content: "**Step 1: Understanding your question**\n",
+    }));
+    
+    // Use AI to analyze the question
+    const analysisPrompt = `Analyze this research question and identify:
+1. Key concepts to explore
+2. Required data sources
+3. Potential sub-questions
+4. Research methodology
+
+Question: ${userMessage}`;
+    
+    let fullResponse = "";
+    
+    if (anthropic) {
+      const stream = await anthropic.messages.stream({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 4096,
+        messages: [{ role: "user", content: analysisPrompt }],
+        temperature: 0.5,
+      });
+      
+      for await (const chunk of stream) {
+        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+          const text = chunk.delta.text;
+          fullResponse += text;
+          ws.send(JSON.stringify({
+            type: "chunk",
+            content: text,
+          }));
+        }
+      }
+    } else if (openai) {
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: analysisPrompt }],
+        temperature: 0.5,
+        stream: true,
+      });
+      
+      for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content || "";
+        fullResponse += text;
+        ws.send(JSON.stringify({
+          type: "chunk",
+          content: text,
+        }));
+      }
+    }
+    
+    // Step 2: Web search for current information
+    ws.send(JSON.stringify({
+      type: "chunk",
+      content: "\n\n**Step 2: Gathering current information**\n",
+    }));
+    
+    const searchResult = await perplexity.search([
+      { role: 'user', content: userMessage }
+    ], {
+      model: 'llama-3.1-sonar-huge-128k-online',
+      temperature: 0.3,
+      searchRecencyFilter: 'month',
+    });
+    
+    const formattedResult = perplexity.formatWithCitations(searchResult);
+    fullResponse += "\n\n" + formattedResult;
+    
+    ws.send(JSON.stringify({
+      type: "chunk",
+      content: formattedResult,
+    }));
+    
+    // Step 3: Synthesis
+    ws.send(JSON.stringify({
+      type: "chunk",
+      content: "\n\n**Step 3: Synthesis and Conclusions**\n",
+    }));
+    
+    const synthesisPrompt = `Based on the analysis and research:
+${fullResponse}
+
+Provide a comprehensive synthesis with:
+1. Key findings
+2. Evidence-based conclusions
+3. Remaining questions
+4. Recommendations`;
+    
+    if (anthropic) {
+      const stream = await anthropic.messages.stream({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 2048,
+        messages: [{ role: "user", content: synthesisPrompt }],
+        temperature: 0.3,
+      });
+      
+      for await (const chunk of stream) {
+        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+          const text = chunk.delta.text;
+          fullResponse += text;
+          ws.send(JSON.stringify({
+            type: "chunk",
+            content: text,
+          }));
+        }
+      }
+    }
+    
+    // Save the research
+    await storage.createMessage({
+      conversationId,
+      role: "assistant",
+      content: fullResponse,
+      model: model,
+      reasoning: {
+        steps: ["Analysis", "Research", "Synthesis"],
+        sources: searchResult.citations,
+      },
+    });
+    
+    ws.send(JSON.stringify({ type: "done" }));
+  } catch (error) {
+    console.error('Research mode error:', error);
+    ws.send(JSON.stringify({
+      type: "error",
+      message: "Failed to complete research",
     }));
   }
 }
