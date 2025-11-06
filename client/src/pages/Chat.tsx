@@ -13,7 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, Plus, StopCircle, Paperclip, Code2, Image as ImageIcon, Search, Database, Calculator, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { 
+  Send, 
+  Plus, 
+  StopCircle, 
+  Paperclip, 
+  Code2, 
+  Image as ImageIcon, 
+  Search, 
+  Database, 
+  Calculator, 
+  Sparkles, 
+  Volume2, 
+  VolumeX,
+  MessageSquare 
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -22,10 +36,25 @@ import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { 
+  SidebarProvider, 
+  SidebarTrigger,
+  SidebarInset,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
 
 type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
-export default function Chat() {
+export default function ChatRedesigned() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth() as {
@@ -40,11 +69,10 @@ export default function Chat() {
   const [streamingMessage, setStreamingMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
-  const [autoSpeak, setAutoSpeak] = useState(false); // Auto-speak AI responses
+  const [autoSpeak, setAutoSpeak] = useState(false);
   
-  // Text-to-Speech for AI responses
   const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
-    rate: 1.1, // Slightly faster for natural conversation
+    rate: 1.1,
     pitch: 1.0,
     volume: 1.0,
   });
@@ -119,7 +147,6 @@ export default function Chat() {
 
     setInput("");
 
-    // Create conversation if none selected
     let conversationId = selectedConversationId;
     if (!conversationId) {
       const newConv = await createConversationMutation.mutateAsync(messageText.slice(0, 50));
@@ -129,10 +156,7 @@ export default function Chat() {
     setIsStreaming(true);
     setStreamingMessage("");
 
-    // Connect to WebSocket for streaming
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(`${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -141,32 +165,15 @@ export default function Chat() {
         conversationId,
         message: messageText,
         model: selectedModel,
-        mode: selectedMode, // Send current mode (chat, search, research, code, voice)
+        mode: selectedMode,
       }));
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === "chunk") {
-        setStreamingMessage((prev) => {
-          const newMessage = prev + data.content;
-          
-          // Stream voice output if auto-speak is enabled
-          if (autoSpeak && !isSpeaking) {
-            // Speak in chunks when we have complete sentences
-            const sentences = newMessage.match(/[^.!?]+[.!?]+/g);
-            if (sentences && sentences.length > 0) {
-              speak(sentences[sentences.length - 1]);
-            }
-          }
-          
-          return newMessage;
-        });
-      } else if (data.type === "status") {
-        // Show search status (e.g., "🔍 Searching the web...")
-        setStreamingMessage(data.message);
+        setStreamingMessage((prev) => prev + data.content);
       } else if (data.type === "done") {
-        // Speak final message if auto-speak enabled
         if (autoSpeak && streamingMessage) {
           speak(streamingMessage);
         }
@@ -206,16 +213,19 @@ export default function Chat() {
       setIsStreaming(false);
       setStreamingMessage("");
     }
-    // Stop any ongoing speech
     cancelSpeech();
   };
 
-  // Handle voice transcript from walkie-talkie
   const handleVoiceTranscript = (transcript: string) => {
     if (!transcript.trim()) return;
     setInput(transcript);
-    // Auto-send after voice input
     setTimeout(() => handleSendMessage(transcript), 100);
+  };
+
+  const handleNewChat = () => {
+    setSelectedConversationId(null);
+    setInput("");
+    setSelectedMode('chat');
   };
 
   const handleSuggestion = (suggestion: string) => {
@@ -237,286 +247,306 @@ export default function Chat() {
 
   const showEmptyState = !selectedConversationId || !messages || messages.length === 0;
 
+  // Custom sidebar width for chat
+  const sidebarStyle = {
+    "--sidebar-width": "20rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
   return (
-    <div className="flex h-screen bg-background">
-      {/* Conversation Sidebar */}
-      <div className="w-80 border-r border-border flex flex-col bg-muted/20">
-        <div className="p-4 border-b border-border">
-          <Button
-            className="w-full bg-primary hover:bg-primary/90"
-            onClick={() => {
-              setSelectedConversationId(null);
-              setInput("");
-              setSelectedMode('chat');
-            }}
-            data-testid="button-new-chat"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Chat
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {conversations?.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => setSelectedConversationId(conv.id)}
-              className={`w-full text-left p-3 rounded-lg transition-all hover-elevate active-elevate-2 ${
-                selectedConversationId === conv.id ? "bg-accent" : ""
-              }`}
-              data-testid={`button-conversation-${conv.id}`}
-            >
-              <div className="font-medium truncate text-sm">{conv.title}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {format(new Date(conv.updatedAt!), "MMM d, h:mm a")}
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        {/* Left Sidebar - Conversations */}
+        <Sidebar collapsible="icon" className="border-r">
+          <SidebarHeader className="p-4">
+            {/* SaintSal Logo */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary-foreground font-bold text-lg">SS</span>
               </div>
-            </button>
-          ))}
-          {(!conversations || conversations.length === 0) && (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No conversations yet
+              <div className="group-data-[collapsible=icon]:hidden">
+                <div className="font-bold text-base text-primary">SaintSal</div>
+                <div className="text-xs text-muted-foreground">Your Gotta Guy™</div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+            
+            {/* New Chat Button */}
+            <Button
+              onClick={handleNewChat}
+              className="w-full bg-primary hover:bg-primary/90 group-data-[collapsible=icon]:p-2"
+              data-testid="button-new-chat"
+            >
+              <Plus className="w-4 h-4 group-data-[collapsible=icon]:m-0 group-data-[state=expanded]:mr-2" />
+              <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
+            </Button>
+          </SidebarHeader>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Messages or Empty State */}
-        <div className="flex-1 overflow-y-auto">
-          {showEmptyState ? (
-            /* Empty State - Welcome Screen */
-            <div className="h-full flex flex-col items-center justify-center px-6">
-              <div className="max-w-2xl w-full text-center space-y-8">
-                {/* Logo/Icon */}
-                <div className="flex justify-center">
-                  <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20">
-                    <Sparkles className="w-10 h-10 text-primary" />
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+                Conversations
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {!conversations || conversations.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+                      No conversations yet
+                    </div>
+                  ) : (
+                    conversations.map((conv) => (
+                      <SidebarMenuItem key={conv.id}>
+                        <SidebarMenuButton
+                          isActive={selectedConversationId === conv.id}
+                          onClick={() => setSelectedConversationId(conv.id)}
+                          className="group"
+                          data-testid={`conversation-${conv.id}`}
+                        >
+                          <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                            <p className="text-sm font-medium truncate">
+                              {conv.title}
+                            </p>
+                            {conv.updatedAt && (
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(conv.updatedAt), "MMM d")}
+                              </p>
+                            )}
+                          </div>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+
+        {/* Main Content Area */}
+        <SidebarInset className="flex flex-col">
+          {/* Header with Sidebar Trigger */}
+          <header className="flex items-center gap-4 h-16 px-6 border-b border-border">
+            <SidebarTrigger className="-ml-1" data-testid="button-sidebar-toggle" />
+            <div className="flex-1" />
+            {/* Model Selector */}
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
+                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                <SelectItem value="gpt-5">GPT-5</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Auto-speak Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAutoSpeak(!autoSpeak)}
+              className={autoSpeak ? "text-primary" : "text-muted-foreground"}
+              data-testid="button-auto-speak"
+            >
+              {autoSpeak ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            </Button>
+          </header>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto">
+            {showEmptyState ? (
+              /* Empty State */
+              <div className="h-full flex flex-col items-center justify-center px-6">
+                <div className="max-w-2xl w-full text-center space-y-8">
+                  <div className="flex justify-center">
+                    <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                      <Sparkles className="w-10 h-10 text-primary" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h1 className="text-4xl font-bold" data-testid="text-welcome-title">
+                      Cookin' Knowledge
+                    </h1>
+                    <p className="text-lg text-accent font-medium">
+                      Your Gotta Guy™
+                    </p>
+                    <p className="text-base text-muted-foreground">
+                      AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => handleSuggestion("Generate code for a React component")}
+                      data-testid="button-suggestion-code"
+                    >
+                      <Code2 className="h-4 w-4 mr-2" />
+                      Generate Code
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => handleSuggestion("What can you do?")}
+                      data-testid="button-suggestion-help"
+                    >
+                      What can you do?
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => handleSuggestion("Help me build something")}
+                      data-testid="button-suggestion-build"
+                    >
+                      Help me build something
+                    </Button>
                   </div>
                 </div>
-
-                {/* Welcome Text */}
-                <div className="space-y-3">
-                  <h1 className="text-4xl font-bold" data-testid="text-welcome-title">
-                    Cookin' Knowledge
-                  </h1>
-                  <p className="text-lg text-accent font-medium">
-                    Your Gotta Guy™
-                  </p>
-                  <p className="text-base text-muted-foreground">
-                    AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
-                  </p>
-                </div>
-
-                {/* Suggestion Buttons */}
-                <div className="flex flex-wrap gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("Generate code for a React component")}
-                    data-testid="button-suggestion-code"
-                  >
-                    <Code2 className="h-4 w-4 mr-2" />
-                    Generate Code
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("What can you do?")}
-                    data-testid="button-suggestion-capabilities"
-                  >
-                    What can you do?
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("Help me build something amazing")}
-                    data-testid="button-suggestion-build"
-                  >
-                    Help me build something
-                  </Button>
-                </div>
               </div>
-            </div>
-          ) : (
-            /* Messages View */
-            <div className="p-6">
-              <div className="max-w-3xl mx-auto space-y-6">
+            ) : (
+              /* Messages */
+              <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
                 {messages?.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-4 ${message.role === "user" ? "justify-end" : ""}`}
-                    data-testid={`message-${message.id}`}
-                  >
-                    {message.role === "assistant" && (
-                      <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          AI
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className={`${message.role === "user" ? "max-w-[80%]" : "flex-1"}`}>
-                      <Card
-                        className={`p-4 ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card"
-                        }`}
-                      >
-                        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                          {message.content}
+                  <div key={message.id} className="flex gap-4">
+                    {message.role === "user" ? (
+                      <>
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || user?.email || "User"} />
+                          <AvatarFallback>
+                            {user?.firstName?.[0] || user?.email?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <Card className="p-4 bg-accent/10">
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          </Card>
+                          <div className="text-xs text-muted-foreground mt-1 px-1">
+                            {format(new Date(message.createdAt!), "h:mm a")}
+                          </div>
                         </div>
-                      </Card>
-                      <div className="text-xs text-muted-foreground mt-1 px-1">
-                        {format(new Date(message.createdAt!), "h:mm a")}
-                        {message.model && (
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {message.model}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    {message.role === "user" && user && (
-                      <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarImage src={user.profileImageUrl || undefined} />
-                        <AvatarFallback>
-                          {user.firstName?.[0] || user.email?.[0] || "U"}
-                        </AvatarFallback>
-                      </Avatar>
+                      </>
+                    ) : (
+                      <>
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <Card className="p-4">
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          </Card>
+                          <div className="text-xs text-muted-foreground mt-1 px-1 flex items-center gap-2">
+                            {format(new Date(message.createdAt!), "h:mm a")}
+                            {message.model && (
+                              <Badge variant="outline" className="text-xs">
+                                {message.model}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 ))}
 
-                {/* Streaming Message */}
                 {isStreaming && streamingMessage && (
-                  <div className="flex gap-4" data-testid="message-streaming">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        AI
-                      </AvatarFallback>
+                  <div className="flex gap-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <Card className="p-4 bg-card">
-                        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                          {streamingMessage}
-                        </div>
+                      <Card className="p-4">
+                        <p className="text-sm whitespace-pre-wrap">{streamingMessage}</p>
                       </Card>
-                    </div>
-                  </div>
-                )}
-
-                {/* Typing Indicator */}
-                {isStreaming && !streamingMessage && (
-                  <div className="flex gap-4" data-testid="indicator-typing">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        AI
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
                   </div>
                 )}
 
                 <div ref={messagesEndRef} />
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Premium Mode Selector */}
-        <div className="border-t border-border bg-muted/10">
-          <div className="max-w-3xl mx-auto px-6 py-4">
-            <ModeSelector
-              currentMode={selectedMode}
-              onModeChange={setSelectedMode}
-              disabled={isStreaming}
-            />
+            )}
           </div>
-        </div>
 
-        {/* Input Area */}
-        <div className="border-t border-border bg-background">
-          <div className="max-w-3xl mx-auto px-6 py-4">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 relative">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
+          {/* Mode Selector */}
+          <div className="border-t border-border bg-muted/10">
+            <div className="max-w-3xl mx-auto px-6 py-4">
+              <ModeSelector
+                currentMode={selectedMode}
+                onModeChange={setSelectedMode}
+                disabled={isStreaming}
+              />
+            </div>
+          </div>
+
+          {/* Input Area */}
+          <div className="border-t border-border bg-background">
+            <div className="max-w-3xl mx-auto px-6 py-4">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={
+                      selectedMode === 'chat' ? "Message Your Gotta Guy™..." :
+                      selectedMode === 'search' ? "Search the web... (Perplexity with citations)" :
+                      selectedMode === 'research' ? "Deep research question..." :
+                      selectedMode === 'code' ? "Describe your code needs..." :
+                      selectedMode === 'voice' ? "Click mic or type..." :
+                      "Message..."
                     }
-                  }}
-                  placeholder={
-                    selectedMode === 'search' ? "Search the web... (Perplexity with citations)" :
-                    selectedMode === 'research' ? "Deep research question..." :
-                    selectedMode === 'code' ? "Describe your code needs..." :
-                    selectedMode === 'voice' ? "Click mic or type..." :
-                    "Message Your Gotta Guy™..."
-                  }
-                  className="min-h-[56px] max-h-[200px] resize-none pr-10"
-                  disabled={isStreaming}
-                  data-testid="input-message"
-                />
-                <div className="absolute right-3 bottom-3 flex gap-1">
+                    className="min-h-[60px] pr-20 resize-none"
+                    disabled={isStreaming}
+                    data-testid="input-message"
+                  />
+                  {/* Attachment Button */}
                   <Button
-                    size="icon"
                     variant="ghost"
-                    className="h-7 w-7"
+                    size="icon"
+                    className="absolute right-2 top-2"
+                    disabled
                     data-testid="button-attach"
                   >
                     <Paperclip className="h-4 w-4" />
                   </Button>
-                  <WalkieTalkieButton
-                    onTranscript={handleVoiceTranscript}
-                    disabled={isStreaming}
-                    className="h-7 w-7"
-                  />
-                  <Button
-                    size="icon"
-                    variant={autoSpeak ? "default" : "ghost"}
-                    onClick={() => setAutoSpeak(!autoSpeak)}
-                    className="h-7 w-7"
-                    data-testid="button-auto-speak"
-                    title={autoSpeak ? "Auto-speak ON" : "Auto-speak OFF"}
-                  >
-                    {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                  </Button>
                 </div>
+
+                {/* Walkie-Talkie Button */}
+                <WalkieTalkieButton
+                  onTranscript={handleVoiceTranscript}
+                  className="h-[60px]"
+                />
+
+                {/* Send/Stop Button */}
+                {isStreaming ? (
+                  <Button
+                    onClick={handleStopGeneration}
+                    className="h-[60px]"
+                    variant="destructive"
+                    data-testid="button-stop"
+                  >
+                    <StopCircle className="h-5 w-5" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleSendMessage()}
+                    className="h-[60px]"
+                    disabled={!input.trim()}
+                    data-testid="button-send"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                )}
               </div>
-              {isStreaming ? (
-                <Button
-                  size="icon"
-                  variant="destructive"
-                  onClick={handleStopGeneration}
-                  className="flex-shrink-0"
-                  data-testid="button-stop"
-                >
-                  <StopCircle className="h-5 w-5" />
-                </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  onClick={() => handleSendMessage()}
-                  disabled={!input.trim() || isStreaming}
-                  className="flex-shrink-0"
-                  data-testid="button-send"
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground mt-2 text-center">
-              SaintSal can make mistakes. Please verify important information.
             </div>
           </div>
-        </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
