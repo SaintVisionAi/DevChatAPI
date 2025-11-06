@@ -260,12 +260,21 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     // Save assistant message
     console.log('Saving assistant message, length:', fullResponse.length);
     if (fullResponse.length > 0) {
-      await storage.createMessage({
-        conversationId,
-        role: "assistant",
-        content: fullResponse,
-        model,
-      });
+      try {
+        const savedMessage = await storage.createMessage({
+          conversationId,
+          role: "assistant",
+          content: fullResponse,
+          model,
+        });
+        console.log('Assistant message saved successfully:', {
+          messageId: savedMessage.id,
+          conversationId: savedMessage.conversationId,
+          contentLength: savedMessage.content.length
+        });
+      } catch (error) {
+        console.error('Failed to save assistant message:', error);
+      }
     } else {
       console.error('WARNING: Empty AI response!');
     }
