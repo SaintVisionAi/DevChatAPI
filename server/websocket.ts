@@ -197,24 +197,37 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       }
 
       console.log('Using Anthropic to generate response...');
-      const stream = await anthropic.messages.stream({
-        model: model === "claude-opus-4-1" ? "claude-opus-4-20250514" : "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        messages: conversationHistory,
-      });
+      try {
+        const stream = await anthropic.messages.stream({
+          model: model === "claude-opus-4-1" ? "claude-opus-4-20250514" : "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          messages: conversationHistory,
+        });
 
-      for await (const chunk of stream) {
-        if (
-          chunk.type === "content_block_delta" &&
-          chunk.delta.type === "text_delta"
-        ) {
-          const text = chunk.delta.text;
-          fullResponse += text;
-          ws.send(JSON.stringify({
-            type: "chunk",
-            content: text,
-          }));
+        console.log('Anthropic stream created, listening for chunks...');
+        let chunkCount = 0;
+        for await (const chunk of stream) {
+          if (
+            chunk.type === "content_block_delta" &&
+            chunk.delta.type === "text_delta"
+          ) {
+            const text = chunk.delta.text;
+            fullResponse += text;
+            chunkCount++;
+            if (chunkCount === 1) {
+              console.log('First chunk received:', text.substring(0, 50));
+            }
+            ws.send(JSON.stringify({
+              type: "chunk",
+              content: text,
+            }));
+          }
         }
+        console.log('Anthropic response complete. Chunks sent:', chunkCount, 'Total length:', fullResponse.length);
+      } catch (error) {
+        console.error('Anthropic API error:', error);
+        ws.send(JSON.stringify({ type: "error", message: "AI service error: " + error.message }));
+        return;
       }
     } else {
       if (!openai) {
@@ -245,14 +258,20 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     }
 
     // Save assistant message
-    await storage.createMessage({
-      conversationId,
-      role: "assistant",
-      content: fullResponse,
-      model,
-    });
+    console.log('Saving assistant message, length:', fullResponse.length);
+    if (fullResponse.length > 0) {
+      await storage.createMessage({
+        conversationId,
+        role: "assistant",
+        content: fullResponse,
+        model,
+      });
+    } else {
+      console.error('WARNING: Empty AI response!');
+    }
 
     // Send done signal
+    console.log('Sending done signal');
     ws.send(JSON.stringify({
       type: "done",
     }));
