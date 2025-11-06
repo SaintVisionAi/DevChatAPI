@@ -199,7 +199,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       console.log('Using Anthropic to generate response...');
       try {
         const stream = await anthropic.messages.stream({
-          model: model === "claude-opus-4-1" ? "claude-opus-4-20250514" : "claude-sonnet-4-20250514",
+          model: model === "claude-opus-4-1" ? "claude-3-opus-20240229" : "claude-3-5-sonnet-20241022",
           max_tokens: 4096,
           messages: conversationHistory,
         });
