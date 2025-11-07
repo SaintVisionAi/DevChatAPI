@@ -563,8 +563,18 @@ export default function ChatFixed() {
           </div>
           
           <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 sm:py-3">
+            {/* Streaming Indicator - Clear AI Response Status */}
+            {isStreaming && (
+              <div className="mb-2 text-center">
+                <Badge variant="default" className="bg-primary text-primary-foreground animate-pulse">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI is responding...
+                </Badge>
+              </div>
+            )}
+
             {/* Mobile-First: Voice Mode Prominent on Small Screens */}
-            {selectedMode === 'voice' && (
+            {selectedMode === 'voice' && !isStreaming && (
               <div className="md:hidden mb-2 text-center">
                 <Badge variant="default" className="bg-primary text-primary-foreground animate-pulse">
                   <Mic className="h-3 w-3 mr-1" />
@@ -579,6 +589,7 @@ export default function ChatFixed() {
                 <WalkieTalkieButton
                   onTranscript={handleVoiceTranscript}
                   className="h-[50px] w-[50px]"
+                  disabled={isStreaming}
                 />
               </div>
               
@@ -635,6 +646,7 @@ export default function ChatFixed() {
                 <WalkieTalkieButton
                   onTranscript={handleVoiceTranscript}
                   className="h-[60px]"
+                  disabled={isStreaming}
                 />
               </div>
 
@@ -647,7 +659,7 @@ export default function ChatFixed() {
                   data-testid="button-stop"
                 >
                   <StopCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline ml-2">Stop</span>
+                  <span className="hidden sm:inline ml-2">Stop AI</span>
                 </Button>
               ) : (
                 <Button
