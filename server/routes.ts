@@ -36,7 +36,7 @@ export function registerRoutes(app: Express) {
       return res.status(401).send("Unauthorized");
     }
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -55,7 +55,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -73,7 +73,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -114,7 +114,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -132,7 +132,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -194,7 +194,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -240,7 +240,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(401).send("Unauthorized");
       }
@@ -259,7 +259,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(403).send("Forbidden");
       }
@@ -281,7 +281,7 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.session.user!.id;
       if (!userId) {
         return res.status(403).send("Forbidden");
       }
