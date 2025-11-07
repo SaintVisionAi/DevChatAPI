@@ -3,7 +3,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { registerRoutes } from "./routes";
-import { setupSimpleAuth, sessionStore as simpleSessionStore } from "./simple-auth";
 import { handleWebSocket } from "./websocket";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -54,11 +53,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Setup simple authentication
-  await setupSimpleAuth(app);
-
-  // Register API routes
-  registerRoutes(app);
+  // ✅ Register API routes (includes setupAuth with Replit OIDC)
+  await registerRoutes(app);
 
   // Setup WebSocket server
   const wss = new WebSocketServer({ server, path: "/ws" });
@@ -91,16 +87,21 @@ app.use((req, res, next) => {
       const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
 
       // Load session from PostgreSQL
-      simpleSessionStore.get(sessionId, async (err: any, session: any) => {
-        if (err || !session || !session.userId || !session.user) {
+      // Note: Session store is set up by setupAuth in registerRoutes
+      const { getSession } = await import('./replitAuth');
+      const sessionMiddleware = getSession();
+      const store = (sessionMiddleware as any).store;
+      
+      store.get(sessionId, async (err: any, session: any) => {
+        if (err || !session || !session.passport || !session.passport.user) {
           console.error("WebSocket connection rejected: Invalid or expired session", err);
           ws.close(1008, "Unauthorized - Invalid session");
           return;
         }
 
-        // Extract user from session
-        const userId = session.userId;
-        const email = session.user.email;
+        // Extract user from OIDC session
+        const userId = session.passport.user.claims.sub;
+        const email = session.passport.user.claims.email;
 
         if (!userId || !email) {
           console.error("WebSocket connection rejected: No user in session");

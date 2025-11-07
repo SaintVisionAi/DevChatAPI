@@ -1,5 +1,5 @@
 // Production-ready tier enforcement system
-import { db } from "@db";
+import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 

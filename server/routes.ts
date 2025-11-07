@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -29,17 +30,14 @@ if (process.env.OPENAI_API_KEY) {
   });
 }
 
-export function registerRoutes(app: Express) {
-  // Get current user
-  app.get("/api/auth/user", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
+export async function registerRoutes(app: Express) {
+  // ✅ SETUP REPLIT OIDC AUTHENTICATION
+  await setupAuth(app);
+
+  // Get current user (protected by isAuthenticated)
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.session.user.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const user = await storage.getUserById(userId);
       res.json(user);
     } catch (error) {
@@ -453,6 +451,14 @@ export function registerRoutes(app: Express) {
       console.error("Error getting file stats:", error);
       res.status(404).json({ message: "File not found" });
     }
+  });
+
+  // ✅ IMAGE GENERATION ROUTES
+  import('./routes/image-generation').then((module) => {
+    app.use('/api/images', module.default);
+    console.log('[Routes] Image generation endpoints registered');
+  }).catch((error) => {
+    console.error('[Routes] Failed to load image generation routes:', error);
   });
 
   // Voice endpoints
