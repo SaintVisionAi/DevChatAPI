@@ -157,45 +157,54 @@ export default function ChatFixed() {
     const ws = new WebSocket(wsUrl.href);
     wsRef.current = ws;
 
+    // ✅ Store message payload to send after "ready" signal
+    const messagePayload = JSON.stringify({
+      type: "chat",
+      conversationId,
+      message: messageText,
+      model: selectedModel,
+      mode: selectedMode,
+      imageData: selectedImage,
+    });
+
     ws.onopen = () => {
-      console.log('[Chat] WebSocket OPENED - sending message');
+      console.log('[Chat] WebSocket OPENED - waiting for READY signal...');
       console.log('[Chat] WebSocket readyState:', ws.readyState);
-      console.log('[Chat] Message payload:', JSON.stringify({
+      console.log('[Chat] Queued message payload (will send after ready):', JSON.stringify({
         type: "chat",
         conversationId,
         message: messageText.substring(0, 50),
         model: selectedModel,
         mode: selectedMode,
       }));
-      
-      try {
-        const payload = JSON.stringify({
-          type: "chat",
-          conversationId,
-          message: messageText,
-          model: selectedModel,
-          mode: selectedMode,
-          imageData: selectedImage,
-        });
-        ws.send(payload);
-        console.log('[Chat] Message SENT successfully, payload length:', payload.length);
-      } catch (error) {
-        console.error('[Chat] Failed to send WebSocket message:', error);
-        toast({
-          title: "Send Error",
-          description: "Failed to send message over WebSocket",
-          variant: "destructive",
-        });
-        setIsStreaming(false);
-      }
-      
-      // Clear image after sending
-      setSelectedImage(null);
+      // ✅ DON'T send yet - wait for "ready" signal from server
     };
 
     let fullMessage = "";
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
+      
+      // ✅ Handle "ready" signal from server
+      if (data.type === "ready") {
+        console.log('[Chat] ✅ Received READY signal from server - sending message now');
+        console.log('[Chat] Server userId:', data.userId);
+        try {
+          ws.send(messagePayload);
+          console.log('[Chat] ✅ Message SENT successfully, payload length:', messagePayload.length);
+          // Clear image after sending
+          setSelectedImage(null);
+        } catch (error) {
+          console.error('[Chat] Failed to send WebSocket message:', error);
+          toast({
+            title: "Send Error",
+            description: "Failed to send message over WebSocket",
+            variant: "destructive",
+          });
+          setIsStreaming(false);
+        }
+        return;
+      }
+      
       if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
         fullMessage += data.content;
