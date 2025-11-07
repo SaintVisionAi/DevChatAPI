@@ -36,6 +36,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### 2025-11-07: Production-Ready WebSocket + Vercel Deployment
+- **FIXED**: WebSocket race condition - session now awaited before registering handlers
+- **ADDED**: WebSocket READY handshake protocol - client waits for server signal before sending
+- **FIXED**: upsertUser preserves foreign key integrity - no primary key mutations
+- **TESTED**: E2E chat streaming verified working (multiple messages, streaming, persistence)
+- **READY**: Vercel deployment configuration complete (vercel.json + deployment guide)
+- **ARCHITECT APPROVED**: All fixes meet production-readiness standards
+
 ### 2025-11-06: Critical Security Fix - WebSocket Authentication
 - **FIXED**: WebSocket layer was using hard-coded "default-user", causing complete data leakage between users
 - **SOLUTION**: Implemented proper session-based WebSocket authentication
