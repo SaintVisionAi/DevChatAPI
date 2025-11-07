@@ -19,10 +19,11 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await apiRequest("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // Important for cookies
       });
 
       if (response.ok) {
@@ -41,6 +42,7 @@ export default function Login() {
         });
       }
     } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
