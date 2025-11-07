@@ -168,12 +168,17 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     
     // Build conversation with SaintSal system prompt
     const systemPrompt = getSaintSalPrompt(mode || 'chat');
-    const conversationHistory = [
+    
+    // For Anthropic: system is separate, for OpenAI: system is in messages
+    const conversationHistoryWithoutSystem = messages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }));
+    
+    // OpenAI format (with system in messages)
+    const conversationHistoryWithSystem = [
       { role: "system" as const, content: systemPrompt },
-      ...messages.map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      }))
+      ...conversationHistoryWithoutSystem
     ];
 
     // Handle image analysis with Gemini if image is present
@@ -246,12 +251,13 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       }
 
       console.log('Using Anthropic to generate response...');
-      console.log('Model:', model, 'Messages:', conversationHistory.length);
+      console.log('Model:', model, 'Messages:', conversationHistoryWithoutSystem.length);
       try {
         const stream = await anthropic.messages.stream({
           model: model === "claude-opus-4-1" ? "claude-opus-4-1-20250805" : "claude-sonnet-4-5-20250929",
           max_tokens: 4096,
-          messages: conversationHistory,
+          system: systemPrompt,
+          messages: conversationHistoryWithoutSystem,
         });
 
         console.log('Anthropic stream created, listening for chunks...');
@@ -291,7 +297,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       // OpenAI streaming
       const stream = await openai.chat.completions.create({
         model: model === "gpt-5" ? "gpt-4-turbo-preview" : "gpt-4-turbo-preview",
-        messages: conversationHistory,
+        messages: conversationHistoryWithSystem,
         stream: true,
       });
 
