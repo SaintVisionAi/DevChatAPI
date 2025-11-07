@@ -32,7 +32,7 @@ if (process.env.OPENAI_API_KEY) {
 export function registerRoutes(app: Express) {
   // Get current user
   app.get("/api/auth/user", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
     try {
@@ -50,7 +50,7 @@ export function registerRoutes(app: Express) {
 
   // Conversations
   app.get("/api/conversations", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -68,7 +68,7 @@ export function registerRoutes(app: Express) {
   });
 
   app.post("/api/conversations", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -94,7 +94,7 @@ export function registerRoutes(app: Express) {
 
   // Messages
   app.get("/api/conversations/:id/messages", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -109,7 +109,7 @@ export function registerRoutes(app: Express) {
 
   // API Environments
   app.get("/api/environments", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -127,7 +127,7 @@ export function registerRoutes(app: Express) {
   });
 
   app.post("/api/environments", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -153,7 +153,7 @@ export function registerRoutes(app: Express) {
 
   // Environment Variables
   app.get("/api/environments/:id/variables", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -167,7 +167,7 @@ export function registerRoutes(app: Express) {
   });
 
   app.post("/api/environments/:id/variables", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -189,7 +189,7 @@ export function registerRoutes(app: Express) {
 
   // Playground Execute
   app.post("/api/playground/execute", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -235,7 +235,7 @@ export function registerRoutes(app: Express) {
 
   // Stats
   app.get("/api/stats", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -254,7 +254,7 @@ export function registerRoutes(app: Express) {
 
   // Admin routes
   app.get("/api/admin/stats", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(403).send("Forbidden");
     }
 
@@ -276,7 +276,7 @@ export function registerRoutes(app: Express) {
   });
 
   app.get("/api/admin/users", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(403).send("Forbidden");
     }
 
@@ -308,7 +308,7 @@ export function registerRoutes(app: Express) {
 
   // Single file upload
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -332,7 +332,7 @@ export function registerRoutes(app: Express) {
 
   // Multiple file upload
   app.post("/api/upload/multiple", upload.array("files", 5), async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -357,7 +357,7 @@ export function registerRoutes(app: Express) {
 
   // Get file info
   app.get("/api/upload/:fileId", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -373,7 +373,7 @@ export function registerRoutes(app: Express) {
   // Voice endpoints
   // Text to Speech
   app.post("/api/voice/tts", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
@@ -404,7 +404,7 @@ export function registerRoutes(app: Express) {
 
   // Speech to Text (using OpenAI Whisper)
   app.post("/api/voice/stt", upload.single("audio"), async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session?.user) {
       return res.status(401).send("Unauthorized");
     }
 
