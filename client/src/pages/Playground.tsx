@@ -50,11 +50,11 @@ export default function Playground() {
     if (!authLoading && !isAuthenticated) {
       toast({
         title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        description: "Please login to continue...",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
     }
   }, [isAuthenticated, authLoading, toast]);
@@ -86,11 +86,11 @@ export default function Playground() {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Please login to continue...",
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }

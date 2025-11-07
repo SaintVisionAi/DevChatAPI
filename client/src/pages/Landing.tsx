@@ -70,7 +70,7 @@ export default function Landing() {
               Playground
             </Link>
             <Button size="sm" asChild data-testid="button-nav-signin">
-              <a href="/api/login">Sign In</a>
+              <a href="/login">Sign In</a>
             </Button>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function Landing() {
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button size="lg" asChild data-testid="button-get-started">
-              <a href="/api/login">Start Free Trial</a>
+              <a href="/login">Start Free Trial</a>
             </Button>
             <Button size="lg" variant="outline" asChild data-testid="button-view-docs">
               <Link href="/api-docs">View Documentation</Link>
@@ -219,7 +219,7 @@ export default function Landing() {
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button size="lg" asChild data-testid="button-cta-signup">
-              <a href="/api/login">Start Free Trial</a>
+              <a href="/login">Start Free Trial</a>
             </Button>
             <Button size="lg" variant="outline" asChild data-testid="button-cta-contact">
               <a href="mailto:ryan@cookinknowledge.com">Contact Sales</a>
@@ -249,7 +249,7 @@ export default function Landing() {
                 <li><Link href="/pricing" data-testid="link-footer-pricing">Pricing</Link></li>
                 <li><Link href="/api-docs" data-testid="link-footer-docs">API Documentation</Link></li>
                 <li><Link href="/playground" data-testid="link-footer-playground">Playground</Link></li>
-                <li><Link href="/api/login" data-testid="link-footer-login">Sign In</Link></li>
+                <li><Link href="/login" data-testid="link-footer-login">Sign In</Link></li>
               </ul>
             </div>
             <div>

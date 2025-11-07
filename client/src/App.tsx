@@ -51,7 +51,7 @@ function Router() {
           <Route path="/legal/terms" component={Terms} />
           <Route path="/legal/privacy" component={Privacy} />
           <Route path="/legal/baa" component={Baa} />
-          <Route component={Login} />
+          <Route component={NotFound} />
         </>
       ) : (
         <>
