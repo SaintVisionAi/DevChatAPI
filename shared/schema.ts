@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash"), // For simple authentication
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  phone: varchar("phone"), // Phone number
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").default('viewer').notNull(),
   stripeCustomerId: varchar("stripe_customer_id"),

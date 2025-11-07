@@ -297,6 +297,91 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.post("/api/admin/users", async (req: Request, res: Response) => {
+    if (!req.session?.user) {
+      return res.status(403).send("Forbidden");
+    }
+
+    try {
+      const userId = req.session.user!.id;
+      if (!userId) {
+        return res.status(403).send("Forbidden");
+      }
+      const user = await storage.getUserById(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).send("Forbidden");
+      }
+
+      const { email, password, firstName, lastName, phone, role } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Hash password
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const newUser = await storage.createUser({
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        phone,
+        role: role || 'viewer',
+      });
+
+      res.json(newUser);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      if (error.message?.includes('unique')) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
+    if (!req.session?.user) {
+      return res.status(403).send("Forbidden");
+    }
+
+    try {
+      const userId = req.session.user!.id;
+      if (!userId) {
+        return res.status(403).send("Forbidden");
+      }
+      const user = await storage.getUserById(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).send("Forbidden");
+      }
+
+      const targetUserId = req.params.id;
+      const { email, password, firstName, lastName, phone, role } = req.body;
+
+      const updates: any = {};
+      if (email) updates.email = email;
+      if (firstName !== undefined) updates.firstName = firstName;
+      if (lastName !== undefined) updates.lastName = lastName;
+      if (phone !== undefined) updates.phone = phone;
+      if (role) updates.role = role;
+      
+      if (password) {
+        const bcrypt = await import('bcryptjs');
+        updates.passwordHash = await bcrypt.hash(password, 10);
+      }
+
+      const updatedUser = await storage.updateUser(targetUserId, updates);
+      res.json(updatedUser);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      if (error.message?.includes('unique')) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // File Upload Routes
   const upload = multer({
     storage: multer.memoryStorage(),
