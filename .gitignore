@@ -45,3 +45,7 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# Attached assets (prevent accidental secret commits)
+attached_assets/*.txt
+attached_assets/*Pasted*
