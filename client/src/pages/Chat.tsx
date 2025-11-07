@@ -158,14 +158,36 @@ export default function ChatFixed() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({
+      console.log('[Chat] WebSocket OPENED - sending message');
+      console.log('[Chat] WebSocket readyState:', ws.readyState);
+      console.log('[Chat] Message payload:', JSON.stringify({
         type: "chat",
         conversationId,
-        message: messageText,
+        message: messageText.substring(0, 50),
         model: selectedModel,
         mode: selectedMode,
-        imageData: selectedImage,
       }));
+      
+      try {
+        const payload = JSON.stringify({
+          type: "chat",
+          conversationId,
+          message: messageText,
+          model: selectedModel,
+          mode: selectedMode,
+          imageData: selectedImage,
+        });
+        ws.send(payload);
+        console.log('[Chat] Message SENT successfully, payload length:', payload.length);
+      } catch (error) {
+        console.error('[Chat] Failed to send WebSocket message:', error);
+        toast({
+          title: "Send Error",
+          description: "Failed to send message over WebSocket",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+      }
       
       // Clear image after sending
       setSelectedImage(null);

@@ -94,31 +94,46 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
   ws.userId = userId;
   ws.email = email;
 
-  console.log(`WebSocket connected for user: ${email}`);
+  console.log(`========== WEBSOCKET CONNECTED ==========`);
+  console.log(`User ID: ${userId}`);
+  console.log(`Email: ${email}`);
+  console.log(`========================================`);
 
   ws.on("message", async (data: Buffer) => {
+    console.log(`========== WS MESSAGE RECEIVED ==========`);
+    console.log(`[WebSocket] User: ${email}`);
+    console.log(`[WebSocket] Raw data length: ${data.length} bytes`);
+    console.log(`[WebSocket] Raw data preview: ${data.toString().substring(0, 500)}`);
+    
     try {
-      console.log('[WebSocket] Received raw data:', data.toString().substring(0, 200));
       const message = JSON.parse(data.toString());
-      console.log('[WebSocket] Parsed message type:', message.type);
+      console.log('[WebSocket] Parsed message:', JSON.stringify(message, null, 2));
+      console.log('[WebSocket] Message type:', message.type);
       
       if (message.type === "chat") {
-        console.log('[WebSocket] Routing to handleChatMessage');
+        console.log('[WebSocket] ✅ Message type is "chat" - routing to handleChatMessage');
         await handleChatMessage(ws, message);
+        console.log('[WebSocket] ✅ handleChatMessage completed');
       } else {
-        console.log('[WebSocket] Unknown message type:', message.type);
+        console.log('[WebSocket] ❌ Unknown message type:', message.type);
       }
     } catch (error) {
-      console.error("WebSocket error:", error);
+      console.error("========== WEBSOCKET ERROR ==========");
+      console.error("Error:", error);
+      console.error("====================================");
       ws.send(JSON.stringify({
         type: "error",
         message: "Failed to process message",
       }));
     }
+    
+    console.log(`========== WS MESSAGE HANDLED ==========`);
   });
 
   ws.on("close", () => {
-    console.log(`WebSocket disconnected for user: ${email}`);
+    console.log(`========== WEBSOCKET CLOSED ==========`);
+    console.log(`User: ${email}`);
+    console.log(`====================================`);
   });
 }
 
@@ -288,6 +303,12 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Stream response based on model
     console.log('Processing chat with model:', model);
+    
+    // Default to Claude if no model specified
+    if (!model || model === 'undefined' || model === 'null') {
+      model = 'claude-sonnet-4-5';
+      console.log('[Chat] No model specified, defaulting to:', model);
+    }
     
     // ✅ GROK MODEL SUPPORT
     if (model.includes("grok") || model.includes("xai")) {
