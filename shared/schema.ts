@@ -45,6 +45,10 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionStatus: varchar("subscription_status").default('free'),
+  subscriptionTier: varchar("subscription_tier").default('free'), // free, starter, pro, enterprise
+  messageCount: integer("message_count").default(0), // Monthly message count
+  messageLimit: integer("message_limit").default(100), // Monthly message limit
+  lastResetAt: timestamp("last_reset_at").defaultNow(), // Last monthly reset
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

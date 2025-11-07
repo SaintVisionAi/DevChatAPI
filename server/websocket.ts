@@ -138,6 +138,32 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     return;
   }
 
+  // ✅ TIER ENFORCEMENT - Check message limits before processing
+  let shouldIncrementUsage = false;
+  try {
+    const { checkMessageLimit } = await import('./tier-limits');
+    const limitCheck = await checkMessageLimit(ws.userId);
+    
+    if (!limitCheck.allowed) {
+      console.log(`[Tier Limit] User ${ws.userId} reached limit. Tier: ${limitCheck.tier}, Used: ${limitCheck.limit - limitCheck.remaining}/${limitCheck.limit}`);
+      ws.send(JSON.stringify({
+        type: "error",
+        message: `Message limit reached! You've used all ${limitCheck.limit} messages this month. Upgrade to send more messages.`,
+        code: "LIMIT_REACHED",
+        tier: limitCheck.tier,
+        limit: limitCheck.limit,
+        remaining: 0,
+      }));
+      return;
+    }
+    
+    console.log(`[Tier Limit] User ${ws.userId} allowed. Tier: ${limitCheck.tier}, Remaining: ${limitCheck.remaining}`);
+    shouldIncrementUsage = true; // Mark that we should increment after user message is saved
+  } catch (error) {
+    console.error('[Tier Limit] Error checking limit:', error);
+    // Continue anyway - don't block users if tier check fails
+  }
+
   try {
     // Create conversation if it doesn't exist
     if (!conversationId) {
@@ -172,6 +198,17 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     }
 
     await storage.createMessage(messageData);
+    
+    // ✅ INCREMENT MESSAGE COUNT - Track usage for tier limits
+    if (shouldIncrementUsage && ws.userId) {
+      try {
+        const { incrementMessageCount } = await import('./tier-limits');
+        await incrementMessageCount(ws.userId);
+        console.log(`[Tier Limit] Incremented message count for user ${ws.userId}`);
+      } catch (error) {
+        console.error('[Tier Limit] Failed to increment message count:', error);
+      }
+    }
 
     // Get conversation history
     const messages = await storage.getMessagesByConversationId(conversationId);
@@ -251,6 +288,48 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     // Stream response based on model
     console.log('Processing chat with model:', model);
+    
+    // ✅ GROK MODEL SUPPORT
+    if (model.includes("grok") || model.includes("xai")) {
+      const { grok } = await import("./providers/grok");
+      
+      if (!grok.isAvailable()) {
+        ws.send(JSON.stringify({
+          type: "error",
+          message: "Grok API key not configured. Please add GROK_API_KEY to secrets.",
+        }));
+        return;
+      }
+
+      console.log('Using Grok to generate response...');
+      try {
+        fullResponse = await grok.streamChat(conversationHistoryWithSystem, ws, {
+          model: 'grok-2-1212',
+          temperature: 0.7,
+        });
+
+        // Save AI response
+        await storage.createMessage({
+          conversationId,
+          role: "assistant",
+          content: fullResponse,
+          model: model,
+        });
+
+        ws.send(JSON.stringify({ type: "done" }));
+        
+        // Update conversation memory
+        await updateConversationMemory(conversationId, messages, fullResponse);
+      } catch (error: any) {
+        console.error('Grok error:', error);
+        ws.send(JSON.stringify({
+          type: "error",
+          message: error.message || "Grok API error",
+        }));
+      }
+      return;
+    }
+    
     if (model.includes("claude") || model.includes("anthropic")) {
       if (!anthropic) {
         ws.send(JSON.stringify({
