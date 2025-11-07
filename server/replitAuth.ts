@@ -9,6 +9,35 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
+// ====== TypeScript Types for Session Auth ======
+export interface ReplitSessionUser {
+  id?: string;  // User's OIDC sub claim (optional - may not be set immediately)
+  claims: {
+    sub: string;
+    email?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    profile_image_url?: string;
+    exp?: number;  // Token expiration timestamp
+  };
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: number;  // Unix timestamp
+}
+
+// Extend Express Request to include typed user
+export interface SessionAuthRequest extends Express.Request {
+  user: ReplitSessionUser;
+}
+
+// Extend Express namespace for type-safe passport usage
+declare global {
+  namespace Express {
+    interface User extends ReplitSessionUser {}
+  }
+}
+
 const getOidcConfig = memoize(
   async () => {
     return await client.discovery(
@@ -19,15 +48,17 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
+// Session store singleton - export for WebSocket use
+const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+const pgStore = connectPg(session);
+export const sessionStore = new pgStore({
+  conString: process.env.DATABASE_URL,
+  createTableIfMissing: false,
+  ttl: sessionTtl,
+  tableName: "sessions",
+});
+
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -47,7 +78,14 @@ function updateUserSession(
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
+  
+  // CRITICAL: Only update refresh_token if response includes one
+  // OIDC spec allows refresh grants to omit new refresh tokens
+  // Preserve existing token to avoid breaking persistent sessions
+  if (tokens.refresh_token) {
+    user.refresh_token = tokens.refresh_token;
+  }
+  
   user.expires_at = user.claims?.exp;
 }
 
@@ -132,30 +170,133 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // Validate authentication exists
+  if (!req.isAuthenticated() || !req.user) {
+    console.warn("[Auth] Request not authenticated or missing user object");
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  const user = req.user as ReplitSessionUser;
+
+  // CRITICAL: Validate claims exist (prevents crashes in route handlers)
+  if (!user.claims || !user.claims.sub) {
+    console.error("[Auth] Session missing claims - forcing re-auth", {
+      hasUser: !!user,
+      hasClaims: !!user.claims,
+      hasClaimsSub: !!(user.claims && user.claims.sub),
+    });
+    return res.status(401).json({ message: "Unauthorized - invalid session" });
+  }
+
+  // Validate expiry exists
+  if (!user.expires_at) {
+    console.warn("[Auth] Session missing expiry timestamp", {
+      userId: user.claims.sub,
+    });
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Check if token is still valid
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
     return next();
   }
 
+  // Token expired - attempt refresh
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    console.warn("[Auth] Token expired and no refresh token available", {
+      userId: user.claims.sub,
+    });
+    return res.status(401).json({ message: "Unauthorized - session expired" });
   }
 
+  // Attempt token refresh
   try {
+    console.info("[Auth] Refreshing expired token", {
+      userId: user.claims.sub,
+    });
+    
+    // CRITICAL: Preserve refresh token before update
+    // OIDC spec allows refresh grant to omit new refresh_token
+    // Without explicit preservation, sessions break after first refresh
+    const previousRefreshToken = user.refresh_token;
+    
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    
+    // Explicitly restore refresh token if response didn't include new one
+    if (!tokenResponse.refresh_token && previousRefreshToken) {
+      user.refresh_token = previousRefreshToken;
+      console.info("[Auth] Preserved existing refresh token (grant omitted new token)", {
+        userId: user.claims.sub,
+      });
+    }
+    
+    // Ensure claims are still present after refresh
+    if (!user.claims || !user.claims.sub) {
+      console.error("[Auth] Token refresh succeeded but claims lost", {
+        userId: user.id,
+      });
+      return res.status(401).json({ message: "Unauthorized - refresh failed" });
+    }
+    
+    // Ensure refresh token is still present (critical for persistent sessions)
+    if (!user.refresh_token) {
+      console.error("[Auth] Refresh token lost after update - session will break", {
+        userId: user.claims.sub,
+      });
+      return res.status(401).json({ message: "Unauthorized - session corrupted" });
+    }
+    
+    console.info("[Auth] Token refresh successful", {
+      userId: user.claims.sub,
+      hasNewRefreshToken: !!tokenResponse.refresh_token,
+    });
     return next();
   } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    console.error("[Auth] Token refresh failed", {
+      userId: user.claims.sub,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return res.status(401).json({ message: "Unauthorized - refresh failed" });
+  }
+};
+
+// Middleware to require admin role
+// MUST be used after isAuthenticated middleware
+export const requireAdmin: RequestHandler = async (req, res, next) => {
+  const user = req.user as ReplitSessionUser;
+  const userId = user.claims.sub;
+
+  try {
+    const dbUser = await storage.getUserById(userId);
+    
+    if (!dbUser) {
+      console.warn("[Auth] Admin check failed - user not found in database", {
+        userId,
+      });
+      return res.status(403).json({ message: "Forbidden - admin access required" });
+    }
+    
+    if (dbUser.role !== "admin") {
+      console.warn("[Auth] Admin check failed - insufficient role", {
+        userId,
+        role: dbUser.role,
+      });
+      return res.status(403).json({ message: "Forbidden - admin access required" });
+    }
+    
+    console.info("[Auth] Admin check passed", {
+      userId,
+    });
+    next();
+  } catch (error) {
+    console.error("[Auth] Error checking admin role", {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({ message: "Internal server error" });
   }
 };

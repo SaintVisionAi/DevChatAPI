@@ -12,7 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express) {
   await setupAuth(app);
 
   // Get current user (protected by isAuthenticated)
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/auth/user", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUserById(userId);
@@ -46,17 +46,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Conversations
-  app.get("/api/conversations", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Conversations (protected by isAuthenticated)
+  app.get("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
@@ -65,16 +58,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/conversations", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.post("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const data = insertConversationSchema.parse({
         ...req.body,
         userId,
@@ -90,12 +76,8 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Messages
-  app.get("/api/conversations/:id/messages", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Messages (protected by isAuthenticated)
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const messages = await storage.getMessagesByConversationId(req.params.id);
       res.json(messages);
@@ -105,17 +87,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // API Environments
-  app.get("/api/environments", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // API Environments (protected by isAuthenticated)
+  app.get("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const environments = await storage.getEnvironmentsByUserId(userId);
       res.json(environments);
     } catch (error) {
@@ -124,16 +99,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.post("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const data = insertApiEnvironmentSchema.parse({
         ...req.body,
         userId,
@@ -149,12 +117,8 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Environment Variables
-  app.get("/api/environments/:id/variables", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Environment Variables (protected by isAuthenticated)
+  app.get("/api/environments/:id/variables", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const variables = await storage.getVariablesByEnvironmentId(req.params.id);
       res.json(variables);
@@ -164,11 +128,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments/:id/variables", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.post("/api/environments/:id/variables", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const data = insertEnvironmentVariableSchema.parse({
         ...req.body,
@@ -185,17 +145,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Playground Execute
-  app.post("/api/playground/execute", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Playground Execute (protected by isAuthenticated)
+  app.post("/api/playground/execute", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const { environmentId, method, url, headers, body } = req.body;
       
       const startTime = Date.now();
@@ -231,17 +184,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Stats
-  app.get("/api/stats", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Stats (protected by isAuthenticated)
+  app.get("/api/stats", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(401).send("Unauthorized");
-      }
+      const userId = req.user.claims.sub;
       const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {
@@ -250,21 +196,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Admin routes
-  app.get("/api/admin/stats", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(403).send("Forbidden");
-    }
-
+  // Admin routes (protected by isAuthenticated + requireAdmin)
+  app.get("/api/admin/stats", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(403).send("Forbidden");
-      }
-      const user = await storage.getUserById(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).send("Forbidden");
-      }
       const stats = await storage.getAdminStats();
       res.json(stats);
     } catch (error) {
@@ -273,20 +207,8 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/admin/users", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(403).send("Forbidden");
-    }
-
+  app.get("/api/admin/users", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(403).send("Forbidden");
-      }
-      const user = await storage.getUserById(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).send("Forbidden");
-      }
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
@@ -295,21 +217,8 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/admin/users", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(403).send("Forbidden");
-    }
-
+  app.post("/api/admin/users", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(403).send("Forbidden");
-      }
-      const user = await storage.getUserById(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).send("Forbidden");
-      }
-
       const { email, password, firstName, lastName, phone, role } = req.body;
       
       if (!email || !password) {
@@ -339,21 +248,8 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(403).send("Forbidden");
-    }
-
+  app.patch("/api/admin/users/:id", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = req.session.user!.id;
-      if (!userId) {
-        return res.status(403).send("Forbidden");
-      }
-      const user = await storage.getUserById(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).send("Forbidden");
-      }
-
       const targetUserId = req.params.id;
       const { email, password, firstName, lastName, phone, role } = req.body;
 
@@ -389,12 +285,8 @@ export async function registerRoutes(app: Express) {
     },
   });
 
-  // Single file upload
-  app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // File Upload Routes (protected by isAuthenticated)
+  app.post("/api/upload", isAuthenticated, upload.single("file"), async (req: SessionAuthRequest, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file provided" });
@@ -413,12 +305,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Multiple file upload
-  app.post("/api/upload/multiple", upload.array("files", 5), async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.post("/api/upload/multiple", isAuthenticated, upload.array("files", 5), async (req: SessionAuthRequest, res: Response) => {
     try {
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ message: "No files provided" });
@@ -438,12 +325,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Get file info
-  app.get("/api/upload/:fileId", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.get("/api/upload/:fileId", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const stats = await fileProcessor.getFileStats(req.params.fileId);
       res.json(stats);
@@ -461,13 +343,8 @@ export async function registerRoutes(app: Express) {
     console.error('[Routes] Failed to load image generation routes:', error);
   });
 
-  // Voice endpoints
-  // Text to Speech
-  app.post("/api/voice/tts", async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  // Voice endpoints (protected by isAuthenticated)
+  app.post("/api/voice/tts", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
       const { text, voiceId } = req.body;
       
@@ -493,12 +370,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Speech to Text (using OpenAI Whisper)
-  app.post("/api/voice/stt", upload.single("audio"), async (req: Request, res: Response) => {
-    if (!req.session?.user) {
-      return res.status(401).send("Unauthorized");
-    }
-
+  app.post("/api/voice/stt", isAuthenticated, upload.single("audio"), async (req: SessionAuthRequest, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "Audio file is required" });

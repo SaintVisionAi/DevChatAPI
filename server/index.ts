@@ -86,13 +86,10 @@ app.use((req, res, next) => {
       // Decode session ID (format: s:sessionId.signature)
       const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
 
-      // Load session from PostgreSQL
-      // Note: Session store is set up by setupAuth in registerRoutes
-      const { getSession } = await import('./replitAuth');
-      const sessionMiddleware = getSession();
-      const store = (sessionMiddleware as any).store;
+      // Load session from PostgreSQL using shared session store
+      const { sessionStore } = await import('./replitAuth');
       
-      store.get(sessionId, async (err: any, session: any) => {
+      sessionStore.get(sessionId, async (err: any, session: any) => {
         if (err || !session || !session.passport || !session.passport.user) {
           console.error("WebSocket connection rejected: Invalid or expired session", err);
           ws.close(1008, "Unauthorized - Invalid session");
