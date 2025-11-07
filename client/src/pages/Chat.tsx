@@ -28,7 +28,8 @@ import {
   VolumeX,
   MessageSquare,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Mic
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -488,14 +489,14 @@ export default function ChatFixed() {
                         <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <Card className="p-4">
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <Card className="p-4 bg-background/40 backdrop-blur-sm border-border/50">
+                          <p className="text-sm whitespace-pre-wrap">{String(message.content)}</p>
                           {/* Display citations if present */}
-                          {message.searchResults && message.searchResults.length > 0 && (
+                          {message.searchResults && Array.isArray(message.searchResults) && message.searchResults.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-border">
                               <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
                               <div className="space-y-1">
-                                {message.searchResults.map((citation, idx) => (
+                                {(message.searchResults as any[]).map((citation: any, idx: number) => (
                                   <div key={idx} className="flex items-start gap-2">
                                     <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
                                       {idx + 1}
@@ -522,12 +523,6 @@ export default function ChatFixed() {
                               {message.model}
                             </Badge>
                           )}
-                          {message.mode === 'search' && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Search className="h-3 w-3 mr-1" />
-                              Web Search
-                            </Badge>
-                          )}
                         </div>
                       </div>
                     </>
@@ -541,7 +536,7 @@ export default function ChatFixed() {
                     <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <Card className="p-4">
+                    <Card className="p-4 bg-background/40 backdrop-blur-sm border-border/50">
                       <p className="text-sm whitespace-pre-wrap">{streamingMessage}</p>
                     </Card>
                   </div>
@@ -609,18 +604,18 @@ export default function ChatFixed() {
                   disabled={isStreaming}
                   data-testid="input-message"
                 />
-                {/* Attachment Button */}
+                {/* Attachment Button - CLEAN MOBILE */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1 h-8 w-8 sm:right-2 sm:top-2"
+                  className="absolute right-1 top-1 h-10 w-10 sm:h-8 sm:w-8 sm:right-2 sm:top-2 rounded-full bg-background/50 hover:bg-primary/10 backdrop-blur-sm border border-border/30"
                   onClick={() => fileInputRef.current?.click()}
                   data-testid="button-attach"
                 >
                   {selectedImage ? (
-                    <ImageIcon className="h-4 w-4 text-primary" />
+                    <ImageIcon className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                   ) : (
-                    <Paperclip className="h-4 w-4" />
+                    <Paperclip className="h-5 w-5 sm:h-4 sm:w-4" />
                   )}
                 </Button>
               </div>

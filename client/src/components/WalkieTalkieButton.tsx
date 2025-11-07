@@ -109,7 +109,7 @@ export function WalkieTalkieButton({
 
   return (
     <div className="relative">
-      {/* Walkie-Talkie Button */}
+      {/* Walkie-Talkie Button - CLEAN MOBILE GLASS */}
       <Button
         size="icon"
         variant={isPressing ? "default" : "ghost"}
@@ -118,22 +118,23 @@ export function WalkieTalkieButton({
         disabled={disabled}
         className={`
           ${className}
-          ${isPressing ? 'bg-primary text-primary-foreground scale-110' : ''}
+          ${isPressing ? 'bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/50' : 'bg-background/50 backdrop-blur-sm border border-border/30'}
           transition-all duration-200
           select-none touch-none
+          rounded-full
         `}
         data-testid="button-voice-walkie-talkie"
       >
-        <Mic className={`h-4 w-4 ${isPressing ? 'animate-pulse' : ''}`} />
+        <Mic className={`h-5 w-5 ${isPressing ? 'animate-pulse' : ''}`} />
       </Button>
 
-      {/* Live Transcript Display */}
+      {/* Live Transcript Display - GLASS EFFECT */}
       {(isListening || showTranscript) && (
         <div 
           className="absolute bottom-full mb-2 right-0 min-w-[200px] max-w-[300px]"
           data-testid="voice-transcript-display"
         >
-          <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+          <div className="bg-background/90 backdrop-blur-md border border-border/50 rounded-lg p-3 shadow-xl">
             {isListening && (
               <Badge variant="default" className="mb-2 text-xs">
                 🎙️ Listening...

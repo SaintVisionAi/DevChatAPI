@@ -55,10 +55,10 @@ export default function Pricing() {
             Protected by U.S. Patent #10,290,222
           </Badge>
           <h1 className="text-5xl font-bold mb-6" data-testid="text-pricing-title">
-            Enterprise Pricing
+            Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-muted-foreground mb-4">
-            Production-ready AI platform for professional teams. Start free, scale to enterprise.
+            Start with Starter at $27/mo, scale to Pro at $97/mo, or go Enterprise at $297/mo with 5 team seats
           </p>
         </div>
       </section>
