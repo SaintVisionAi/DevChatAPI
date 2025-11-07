@@ -7,7 +7,7 @@ export interface PerplexityMessage {
 }
 
 export interface PerplexitySearchOptions {
-  model?: 'llama-3.1-sonar-small-128k-online' | 'llama-3.1-sonar-large-128k-online' | 'llama-3.1-sonar-huge-128k-online';
+  model?: 'sonar' | 'sonar-pro' | 'sonar-reasoning' | 'sonar-reasoning-pro';
   temperature?: number;
   max_tokens?: number;
   searchDomainFilter?: string[];
@@ -67,7 +67,7 @@ export class PerplexityClient {
     }
 
     const {
-      model = 'llama-3.1-sonar-large-128k-online', // Use large for better quality
+      model = 'sonar-pro', // Use sonar-pro for better quality (2025 model)
       temperature = 0.2,
       max_tokens = 2000,
       searchDomainFilter,
