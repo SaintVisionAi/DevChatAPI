@@ -98,10 +98,15 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
 
   ws.on("message", async (data: Buffer) => {
     try {
+      console.log('[WebSocket] Received raw data:', data.toString().substring(0, 200));
       const message = JSON.parse(data.toString());
+      console.log('[WebSocket] Parsed message type:', message.type);
       
       if (message.type === "chat") {
+        console.log('[WebSocket] Routing to handleChatMessage');
         await handleChatMessage(ws, message);
+      } else {
+        console.log('[WebSocket] Unknown message type:', message.type);
       }
     } catch (error) {
       console.error("WebSocket error:", error);
@@ -118,9 +123,14 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
 }
 
 async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
+  console.log('[handleChatMessage] Called with conversationId:', message.conversationId);
+  console.log('[handleChatMessage] User ID:', ws.userId);
+  console.log('[handleChatMessage] Message:', message.message?.substring(0, 50));
+  
   let { conversationId, message: userMessage, model, mode, imageData } = message;
 
   if (!ws.userId) {
+    console.error('[handleChatMessage] No userId on socket!');
     ws.send(JSON.stringify({
       type: "error",
       message: "Unauthorized",

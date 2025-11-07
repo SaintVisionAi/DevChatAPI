@@ -16,7 +16,7 @@ import {
 import { 
   Send, 
   Plus, 
-  StopCircle, 
+  Loader2,
   Paperclip, 
   Code2, 
   Image as ImageIcon, 
@@ -149,7 +149,12 @@ export default function ChatFixed() {
     setIsStreaming(true);
     setStreamingMessage("");
 
-    const ws = new WebSocket(`${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`);
+    // Construct WebSocket URL correctly using origin
+    const wsUrl = new URL('/ws', window.location.origin);
+    wsUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    console.log('[Chat] Connecting to WebSocket:', wsUrl.href);
+    
+    const ws = new WebSocket(wsUrl.href);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -563,26 +568,6 @@ export default function ChatFixed() {
           </div>
           
           <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 sm:py-3">
-            {/* Streaming Indicator - Clear AI Response Status */}
-            {isStreaming && (
-              <div className="mb-2 text-center">
-                <Badge variant="default" className="bg-primary text-primary-foreground animate-pulse">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  AI is responding...
-                </Badge>
-              </div>
-            )}
-
-            {/* Mobile-First: Voice Mode Prominent on Small Screens */}
-            {selectedMode === 'voice' && !isStreaming && (
-              <div className="md:hidden mb-2 text-center">
-                <Badge variant="default" className="bg-primary text-primary-foreground animate-pulse">
-                  <Mic className="h-3 w-3 mr-1" />
-                  Voice Mode Active - Press and Hold Mic
-                </Badge>
-              </div>
-            )}
-            
             <div className="flex gap-1 sm:gap-2 items-end">
               {/* Mobile: Walkie-Talkie FIRST on small screens - CLEAN */}
               <div className="md:hidden">
@@ -650,28 +635,25 @@ export default function ChatFixed() {
                 />
               </div>
 
-              {/* Send/Stop Button */}
-              {isStreaming ? (
-                <Button
-                  onClick={handleStopGeneration}
-                  className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto"
-                  variant="destructive"
-                  data-testid="button-stop"
-                >
-                  <StopCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline ml-2">Stop AI</span>
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => handleSendMessage()}
-                  className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto bg-primary hover:bg-primary/90"
-                  disabled={!input.trim() && !selectedImage}
-                  data-testid="button-send"
-                >
-                  <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline ml-2">Send</span>
-                </Button>
-              )}
+              {/* Send Button - SIMPLE */}
+              <Button
+                onClick={() => handleSendMessage()}
+                className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto bg-primary hover:bg-primary/90"
+                disabled={!input.trim() && !selectedImage || isStreaming}
+                data-testid="button-send"
+              >
+                {isStreaming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    <span className="hidden sm:inline ml-2">Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline ml-2">Send</span>
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
