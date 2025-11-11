@@ -114,8 +114,9 @@ DATABASE_URL=postgresql://user:password@host/database
 SESSION_SECRET=your-super-secret-session-key-min-32-chars
 
 # OIDC Authentication (Replit Auth)
-ISSUER_URL=https://replit.com/oidc
-REPL_ID=your-repl-id-here
+# CRITICAL: ISSUER_URL must be https://replit.com (NOT your custom domain!)
+ISSUER_URL=https://replit.com
+REPL_ID=0bceeef8-7d6e-4ce0-9f65-7775bbfceabf
 
 # AI Providers
 ANTHROPIC_API_KEY=sk-ant-...

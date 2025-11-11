@@ -40,18 +40,33 @@ declare global {
 
 const getOidcConfig = memoize(
   async () => {
-    // Use Replit's OIDC issuer endpoint
-    // The ISSUER_URL should be the base issuer, not the full discovery URL
-    const issuerUrl = process.env.ISSUER_URL || "https://replit.com";
-    const fullIssuerUrl = issuerUrl.endsWith("/oidc") ? issuerUrl : `${issuerUrl}/oidc`;
-    
-    console.log(`[OIDC] Discovering configuration from: ${fullIssuerUrl}`);
-    console.log(`[OIDC] Client ID (REPL_ID): ${process.env.REPL_ID}`);
-    
-    return await client.discovery(
-      new URL(fullIssuerUrl),
-      process.env.REPL_ID!
-    );
+    try {
+      // CRITICAL: ISSUER_URL must be https://replit.com (NOT your custom domain)
+      // This is Replit's OIDC provider endpoint, not your app's URL
+      const issuerUrl = process.env.ISSUER_URL || "https://replit.com";
+      const fullIssuerUrl = issuerUrl.endsWith("/oidc") ? issuerUrl : `${issuerUrl}/oidc`;
+      
+      if (!process.env.REPL_ID) {
+        throw new Error("REPL_ID environment variable is required for OIDC authentication");
+      }
+      
+      console.log(`[OIDC] Discovering configuration from: ${fullIssuerUrl}`);
+      console.log(`[OIDC] Client ID (REPL_ID): ${process.env.REPL_ID}`);
+      
+      const config = await client.discovery(
+        new URL(fullIssuerUrl),
+        process.env.REPL_ID
+      );
+      
+      console.log(`[OIDC] ✅ Successfully discovered OIDC configuration`);
+      return config;
+    } catch (error) {
+      console.error(`[OIDC] ❌ Failed to discover OIDC configuration:`, error);
+      console.error(`[OIDC] Make sure ISSUER_URL is set to: https://replit.com`);
+      console.error(`[OIDC] Current ISSUER_URL: ${process.env.ISSUER_URL}`);
+      console.error(`[OIDC] Current REPL_ID: ${process.env.REPL_ID}`);
+      throw error;
+    }
   },
   { maxAge: 3600 * 1000 }
 );
@@ -113,7 +128,39 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const config = await getOidcConfig();
+  // ✅ FIX: Wrap OIDC config in try-catch to prevent server crashes
+  let config: client.Config | null = null;
+  try {
+    config = await getOidcConfig();
+  } catch (error) {
+    console.error(`[AUTH] ⚠️  OIDC configuration failed - auth routes will be disabled`);
+    console.error(`[AUTH] Server will start, but login will not work until ISSUER_URL is fixed`);
+    console.error(`[AUTH] Required: ISSUER_URL=https://replit.com (NOT your custom domain)`);
+    
+    // Install fallback auth routes that explain the issue
+    app.get("/api/login", (req, res) => {
+      res.status(503).json({
+        error: "Authentication not available",
+        message: "OIDC configuration failed. Please check ISSUER_URL environment variable.",
+        details: "ISSUER_URL must be set to: https://replit.com"
+      });
+    });
+    
+    app.get("/api/callback", (req, res) => {
+      res.status(503).json({
+        error: "Authentication not available",
+        message: "OIDC configuration failed."
+      });
+    });
+    
+    app.get("/api/logout", (req, res) => {
+      res.redirect("/");
+    });
+    
+    // Don't crash the server - just return without setting up real auth
+    console.warn(`[AUTH] ⚠️  Server started in degraded mode - fix ISSUER_URL to enable authentication`);
+    return;
+  }
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
@@ -135,7 +182,7 @@ export async function setupAuth(app: Express) {
       const strategy = new Strategy(
         {
           name: strategyName,
-          config,
+          config: config!,
           scope: "openid email profile offline_access",
           callbackURL: `https://${domain}/api/callback`,
         },
