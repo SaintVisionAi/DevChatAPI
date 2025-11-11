@@ -40,8 +40,16 @@ declare global {
 
 const getOidcConfig = memoize(
   async () => {
+    // Use Replit's OIDC issuer endpoint
+    // The ISSUER_URL should be the base issuer, not the full discovery URL
+    const issuerUrl = process.env.ISSUER_URL || "https://replit.com";
+    const fullIssuerUrl = issuerUrl.endsWith("/oidc") ? issuerUrl : `${issuerUrl}/oidc`;
+    
+    console.log(`[OIDC] Discovering configuration from: ${fullIssuerUrl}`);
+    console.log(`[OIDC] Client ID (REPL_ID): ${process.env.REPL_ID}`);
+    
     return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
+      new URL(fullIssuerUrl),
       process.env.REPL_ID!
     );
   },
