@@ -35,6 +35,13 @@ export interface SessionAuthRequest extends Express.Request {
 declare global {
   namespace Express {
     interface User extends ReplitSessionUser {}
+    
+    // Add Passport authentication methods to Request
+    interface Request {
+      user?: User;
+      isAuthenticated(): this is { user: User };
+      logout(callback: (err: any) => void): void;
+    }
   }
 }
 
@@ -129,7 +136,7 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   // ✅ FIX: Wrap OIDC config in try-catch to prevent server crashes
-  let config: client.Config | null = null;
+  let config: Awaited<ReturnType<typeof client.discovery>> | null = null;
   try {
     config = await getOidcConfig();
   } catch (error) {
@@ -193,8 +200,8 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  passport.serializeUser((user: Express.User, cb: (err: any, id?: Express.User) => void) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb: (err: any, user?: Express.User | false | null) => void) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
@@ -213,9 +220,13 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
+    req.logout((err: any) => {
+      if (err) {
+        console.error('[AUTH] Logout error:', err);
+        return res.redirect("/");
+      }
       res.redirect(
-        client.buildEndSessionUrl(config, {
+        client.buildEndSessionUrl(config!, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         }).href
@@ -226,7 +237,7 @@ export async function setupAuth(app: Express) {
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // Validate authentication exists
-  if (!req.isAuthenticated() || !req.user) {
+  if (!req.isAuthenticated?.() || !req.user) {
     console.warn("[Auth] Request not authenticated or missing user object");
     return res.status(401).json({ message: "Unauthorized" });
   }
