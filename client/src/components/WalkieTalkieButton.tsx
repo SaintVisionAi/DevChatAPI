@@ -1,5 +1,5 @@
 // Premium walkie-talkie style voice button with push-to-talk
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,9 @@ export function WalkieTalkieButton({
 }: WalkieTalkieButtonProps) {
   const [isPressing, setIsPressing] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestTranscriptRef = useRef<string>('');
+  const hasSentRef = useRef(false);
 
   const {
     isListening,
@@ -32,19 +35,46 @@ export function WalkieTalkieButton({
     continuous: true,
     interimResults: true,
     onTranscript: (text, isFinal) => {
+      console.log('[Voice] Transcript update:', text, 'isFinal:', isFinal);
+      latestTranscriptRef.current = text;
+      
       if (isFinal && text) {
         setShowTranscript(true);
+        
+        // Clear existing timer
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        
+        // Set new timer for 3 seconds of silence
+        silenceTimerRef.current = setTimeout(() => {
+          console.log('[Voice] 3 seconds of silence, auto-sending:', text);
+          if (text && !hasSentRef.current) {
+            hasSentRef.current = true;
+            stopListening();
+            onTranscript(text);
+            resetTranscript();
+            setShowTranscript(false);
+            setIsPressing(false);
+          }
+        }, 3000);
       }
     },
   });
 
   // Handle press start
   const handlePressStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+    // Prevent default only for mouse events, not touch (to avoid passive listener warning)
+    if (e.type === 'mousedown') {
+      e.preventDefault();
+    }
     if (disabled || !isSupported) return;
     
+    console.log('[Voice] Starting listening...');
     setIsPressing(true);
     setShowTranscript(false);
+    hasSentRef.current = false;
+    latestTranscriptRef.current = '';
     resetTranscript();
     startListening();
   }, [disabled, isSupported, startListening, resetTranscript]);
@@ -53,18 +83,29 @@ export function WalkieTalkieButton({
   const handlePressEnd = useCallback(() => {
     if (!isPressing) return;
     
+    console.log('[Voice] Button released');
     setIsPressing(false);
     stopListening();
     
-    // Send transcript after short delay to ensure final results
+    // Clear silence timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    
+    // Send transcript immediately when button is released
     setTimeout(() => {
-      if (transcript) {
-        onTranscript(transcript);
+      const finalText = latestTranscriptRef.current;
+      console.log('[Voice] Sending on release:', finalText);
+      if (finalText && !hasSentRef.current) {
+        hasSentRef.current = true;
+        onTranscript(finalText);
         resetTranscript();
       }
       setShowTranscript(false);
+      latestTranscriptRef.current = '';
     }, 500);
-  }, [isPressing, stopListening, transcript, onTranscript, resetTranscript]);
+  }, [isPressing, stopListening, onTranscript, resetTranscript]);
 
   // Global listeners for mouse/touch release
   useEffect(() => {
@@ -92,6 +133,15 @@ export function WalkieTalkieButton({
       document.removeEventListener('touchcancel', handleGlobalTouchEnd);
     };
   }, [isPressing, handlePressEnd]);
+
+  // Cleanup silence timer on unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!isSupported) {
     return (

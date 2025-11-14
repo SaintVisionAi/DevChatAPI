@@ -33,7 +33,9 @@ import {
   Menu,
   X,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Home,
+  ArrowLeft
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,10 +46,12 @@ import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
 export default function ChatFixed() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth() as {
@@ -423,6 +427,22 @@ export default function ChatFixed() {
             </Button>
           )}
           
+          {/* Back to Dashboard Button */}
+          <Button
+            onClick={() => setLocation('/dashboard')}
+            className={cn(
+              "w-full shadow-sm hover:shadow-md transition-all duration-200 rounded-xl mb-2",
+              sidebarCollapsed 
+                ? "p-2.5 bg-muted/50 hover:bg-muted" 
+                : "bg-muted/50 hover:bg-muted font-medium"
+            )}
+            data-testid="button-back-dashboard"
+            variant="ghost"
+          >
+            <Home className={cn("h-4 w-4", !sidebarCollapsed && "mr-2")} />
+            {!sidebarCollapsed && <span>Dashboard</span>}
+          </Button>
+          
           {/* New Chat Button */}
           <Button
             onClick={handleNewChat}
@@ -531,10 +551,22 @@ export default function ChatFixed() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-border shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header - Always Visible */}
+        
+        <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-border shrink-0 bg-background/95 backdrop-blur-sm z-10">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            {/* Back to Dashboard button - Desktop */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/dashboard')}
+              className="hidden md:flex shrink-0"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
             {/* Mobile menu button */}
             <Button
               variant="ghost"
@@ -544,25 +576,26 @@ export default function ChatFixed() {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            {selectedConversationId && messages && messages.length > 0 ? (
-              <>
-                <h2 className="font-semibold text-sm sm:text-lg truncate flex-1">
-                  {conversations?.find(c => c.id === selectedConversationId)?.title}
-                </h2>
-                {/* Mobile New Chat Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNewChat}
-                  className="md:hidden shrink-0"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <h2 className="font-semibold text-sm sm:text-lg">New Chat</h2>
-            )}
+            
+            {/* Chat Title - Shows conversation name or "New Chat" */}
+            <h2 className="font-semibold text-sm sm:text-lg truncate flex-1">
+              {selectedConversationId && conversations?.find(c => c.id === selectedConversationId)?.title
+                ? conversations.find(c => c.id === selectedConversationId)?.title
+                : "New Chat"}
+            </h2>
+            
+            {/* New Chat Button - Always visible on mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNewChat}
+              className="md:hidden shrink-0"
+              title="New Chat"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
           </div>
+          
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Model Selector - Hidden on mobile */}
             <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -589,25 +622,25 @@ export default function ChatFixed() {
         </header>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {showEmptyState ? (
             /* Empty State */
             <div className="h-full flex flex-col items-center justify-center px-4 sm:px-6">
-              <div className="max-w-2xl w-full text-center space-y-6 sm:space-y-8">
+              <div className="max-w-2xl w-full text-center space-y-4 sm:space-y-6">
                 <div className="flex justify-center">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20">
                     <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
                   </div>
                 </div>
 
-                <div className="space-y-2 sm:space-y-3">
-                  <h1 className="text-2xl sm:text-4xl font-bold" data-testid="text-welcome-title">
+                <div className="space-y-2">
+                  <h1 className="text-xl sm:text-3xl font-bold" data-testid="text-welcome-title">
                     Cookin' Knowledge
                   </h1>
-                  <p className="text-base sm:text-lg text-accent font-medium">
+                  <p className="text-sm sm:text-base text-accent font-medium">
                     Your Gotta Guy™
                   </p>
-                  <p className="text-sm sm:text-base text-muted-foreground px-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground px-4">
                     AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
                   </p>
                 </div>
@@ -773,21 +806,23 @@ export default function ChatFixed() {
         </div>
 
         {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
-        <div className="border-t border-border bg-background/95 backdrop-blur sticky bottom-0 z-50 pb-safe">
-          {/* Mode Selector - Clean at Bottom for Mobile */}
-          <div className="border-b border-border bg-muted/5">
-            <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1.5 sm:py-2">
-              <ModeSelector
-                currentMode={selectedMode}
-                onModeChange={setSelectedMode}
-                disabled={isStreaming}
-                className="scale-90 sm:scale-100 origin-center"
-              />
+        <div className="border-t border-border bg-background backdrop-blur-sm shrink-0 safe-bottom">
+          {/* Mode Selector - Hidden on empty state, shown when chatting */}
+          {!showEmptyState && (
+            <div className="border-b border-border bg-muted/5">
+              <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1 sm:py-2">
+                <ModeSelector
+                  currentMode={selectedMode}
+                  onModeChange={setSelectedMode}
+                  disabled={isStreaming}
+                  className="scale-75 sm:scale-100 origin-center"
+                />
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Modern Message Input Area */}
-          <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4">
+          <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 sm:py-4">
             {/* Selected Image Preview */}
             {selectedImage && (
               <div className="mb-3 relative inline-block">
@@ -808,13 +843,13 @@ export default function ChatFixed() {
             )}
             
             {/* Input Container with Modern Shadow */}
-            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 overflow-hidden backdrop-blur-sm transition-all hover:shadow-xl">
+            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 backdrop-blur-sm transition-all hover:shadow-xl">
               <div className="flex items-end gap-2 p-2">
                 {/* Attachment Button */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-primary/10 shrink-0"
+                  className="h-10 w-10 rounded-full hover:bg-primary/10 shrink-0 self-end"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isStreaming}
                   data-testid="button-attach"
@@ -827,7 +862,7 @@ export default function ChatFixed() {
                 </Button>
 
                 {/* Text Input */}
-                <div className="flex-1 min-h-[44px] max-h-32 overflow-y-auto">
+                <div className="flex-1 max-h-32 overflow-y-auto">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -845,7 +880,7 @@ export default function ChatFixed() {
                       selectedMode === 'voice' ? "Or press mic to speak 🎤" :
                       "Type a message..."
                     }
-                    className="min-h-[44px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-2"
+                    className="min-h-[44px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-2 py-2"
                     disabled={isStreaming}
                     data-testid="input-message"
                   />
@@ -854,7 +889,7 @@ export default function ChatFixed() {
                 {/* Voice Button */}
                 <WalkieTalkieButton
                   onTranscript={handleVoiceTranscript}
-                  className="h-10 w-10 shrink-0"
+                  className="h-10 w-10 shrink-0 self-end"
                   disabled={isStreaming}
                 />
 
@@ -862,7 +897,7 @@ export default function ChatFixed() {
                 <Button
                   onClick={() => handleSendMessage()}
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 self-end transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   disabled={(!input.trim() && !selectedImage) || isStreaming}
                   data-testid="button-send"
                 >
@@ -886,7 +921,7 @@ export default function ChatFixed() {
             </div>
 
             {/* Hint Text */}
-            <div className="flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground">
+            <div className="hidden sm:flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground">
               <span>Press Enter to send</span>
               <span>•</span>
               <span>Shift + Enter for new line</span>

@@ -62,33 +62,40 @@ function Router() {
   }
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between h-16 px-6 border-b border-border">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-hidden">
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/chat" component={Chat} />
-              <Route path="/playground" component={Playground} />
-              <Route path="/settings" component={Settings} />
-              <Route path="/pricing" component={Pricing} />
-              <Route path="/docs" component={ApiDocs} />
-              <Route path="/admin" component={Admin} />
-              <Route path="/legal/terms" component={Terms} />
-              <Route path="/legal/privacy" component={Privacy} />
-              <Route path="/legal/baa" component={Baa} />
-              <Route component={NotFound} />
-            </Switch>
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <Switch>
+      {/* Chat route - Full screen without sidebar/header */}
+      <Route path="/chat" component={Chat} />
+      
+      {/* All other routes with sidebar layout */}
+      <Route>
+        <SidebarProvider style={style as React.CSSProperties}>
+          <div className="flex h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 min-w-0">
+              <header className="flex items-center justify-between h-16 px-6 border-b border-border">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <ThemeToggle />
+              </header>
+              <main className="flex-1 overflow-hidden">
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/dashboard" component={Dashboard} />
+                  <Route path="/playground" component={Playground} />
+                  <Route path="/settings" component={Settings} />
+                  <Route path="/pricing" component={Pricing} />
+                  <Route path="/docs" component={ApiDocs} />
+                  <Route path="/admin" component={Admin} />
+                  <Route path="/legal/terms" component={Terms} />
+                  <Route path="/legal/privacy" component={Privacy} />
+                  <Route path="/legal/baa" component={Baa} />
+                  <Route component={NotFound} />
+                </Switch>
+              </main>
+            </div>
+          </div>
+        </SidebarProvider>
+      </Route>
+    </Switch>
   );
 }
 
