@@ -78,6 +78,28 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.delete("/api/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const conversationId = req.params.id;
+      
+      // Verify the conversation belongs to the user
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      if (conversation.userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      await storage.deleteConversation(conversationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
+    }
+  });
+
   // Messages (protected by isAuthenticated)
   app.get("/api/conversations/:id/messages", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {

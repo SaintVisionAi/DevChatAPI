@@ -48,6 +48,7 @@ export interface IStorage {
     isShared?: boolean;
     sharedWith?: string[];
   }): Promise<void>;
+  deleteConversation(id: string): Promise<void>;
 
   // Messages
   createMessage(data: InsertMessage): Promise<Message>;
@@ -158,6 +159,13 @@ export class DbStorage implements IStorage {
       .update(conversations)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(conversations.id, id));
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    // Delete all messages in the conversation first
+    await db.delete(messages).where(eq(messages.conversationId, id));
+    // Then delete the conversation
+    await db.delete(conversations).where(eq(conversations.id, id));
   }
 
   // Messages

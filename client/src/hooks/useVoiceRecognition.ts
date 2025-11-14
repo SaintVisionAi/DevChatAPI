@@ -86,6 +86,12 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
     };
 
     recognition.onerror = (event: any) => {
+      // Ignore 'aborted' error as it's expected when user stops recording
+      if (event.error === 'aborted' || event.error === 'no-speech') {
+        setState(prev => ({ ...prev, isListening: false }));
+        return;
+      }
+      
       const errorMsg = `Speech recognition error: ${event.error}`;
       console.error(errorMsg);
       setState(prev => ({ ...prev, error: errorMsg, isListening: false }));
@@ -126,7 +132,12 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && state.isListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        // Ignore errors when stopping (already stopped, etc.)
+        console.debug('Error stopping recognition (likely already stopped):', error);
+      }
     }
   }, [state.isListening]);
 
