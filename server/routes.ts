@@ -12,13 +12,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
-// Toggle between Replit auth and simple auth based on environment
-import { setupSimpleAuth, isAuthenticated as simpleIsAuth } from "./simple-auth";
-// import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
-
-// Use simple auth middleware and request type for local development
-const isAuthenticated = simpleIsAuth;
-type SessionAuthRequest = any;
+// Use Replit OIDC authentication
+import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -37,15 +32,26 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 export async function registerRoutes(app: Express) {
-  // ✅ SETUP SIMPLE AUTHENTICATION (for local dev)
-  await setupSimpleAuth(app);
+  // ✅ SETUP REPLIT OIDC AUTHENTICATION
+  await setupAuth(app);
 
-  // Get current user endpoint is now handled by simple-auth.ts
+  // Get current user endpoint
+  app.get("/api/auth/user", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+    const user = req.user;
+    res.json({
+      id: user.claims.sub,
+      email: user.claims.email,
+      firstName: user.claims.first_name,
+      lastName: user.claims.last_name,
+      name: user.claims.name,
+      profileImageUrl: user.claims.profile_image_url,
+    });
+  });
 
   // Conversations (protected by isAuthenticated)
-  app.get("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
@@ -54,9 +60,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const data = insertConversationSchema.parse({
         ...req.body,
         userId,
@@ -84,9 +90,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // API Environments (protected by isAuthenticated)
-  app.get("/api/environments", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const environments = await storage.getEnvironmentsByUserId(userId);
       res.json(environments);
     } catch (error) {
@@ -95,9 +101,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const data = insertApiEnvironmentSchema.parse({
         ...req.body,
         userId,
@@ -142,9 +148,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Playground Execute (protected by isAuthenticated)
-  app.post("/api/playground/execute", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/playground/execute", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const { environmentId, method, url, headers, body } = req.body;
       
       const startTime = Date.now();
@@ -181,9 +187,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Stats (protected by isAuthenticated)
-  app.get("/api/stats", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/stats", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {

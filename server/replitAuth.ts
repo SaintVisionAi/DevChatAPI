@@ -145,23 +145,24 @@ export async function setupAuth(app: Express) {
     console.error(`[AUTH] Required: ISSUER_URL=https://replit.com (NOT your custom domain)`);
     
     // Install fallback auth routes that explain the issue
-    app.get("/api/login", (req, res) => {
+    app.get("/api/auth/oidc", (req, res) => {
       res.status(503).json({
         error: "Authentication not available",
         message: "OIDC configuration failed. Please check ISSUER_URL environment variable.",
-        details: "ISSUER_URL must be set to: https://replit.com"
+        details: "ISSUER_URL must be set to: https://replit.com",
+        current: process.env.ISSUER_URL
       });
     });
     
-    app.get("/api/callback", (req, res) => {
+    app.get("/api/auth/callback", (req, res) => {
       res.status(503).json({
         error: "Authentication not available",
         message: "OIDC configuration failed."
       });
     });
     
-    app.get("/api/logout", (req, res) => {
-      res.redirect("/");
+    app.post("/api/auth/logout", (req, res) => {
+      res.json({ success: true, message: "Logout unavailable - OIDC not configured" });
     });
     
     // Don't crash the server - just return without setting up real auth
@@ -191,7 +192,7 @@ export async function setupAuth(app: Express) {
           name: strategyName,
           config: config!,
           scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
+          callbackURL: `https://${domain}/api/auth/callback`,
         },
         verify,
       );
@@ -203,7 +204,7 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb: (err: any, id?: Express.User) => void) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb: (err: any, user?: Express.User | false | null) => void) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
+  app.get("/api/auth/oidc", (req, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -211,15 +212,15 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  app.get("/api/auth/callback", (req, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      successReturnToOrRedirect: "/dashboard",
+      failureRedirect: "/login",
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
+  app.post("/api/auth/logout", (req, res) => {
     req.logout((err: any) => {
       if (err) {
         console.error('[AUTH] Logout error:', err);
