@@ -56,7 +56,7 @@ export default function ChatFixed() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
+  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -158,15 +158,15 @@ export default function ChatFixed() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[Chat] WebSocket OPENED - sending message');
-      console.log('[Chat] WebSocket readyState:', ws.readyState);
-      console.log('[Chat] Message payload:', JSON.stringify({
-        type: "chat",
-        conversationId,
-        message: messageText.substring(0, 50),
-        model: selectedModel,
-        mode: selectedMode,
-      }));
+      // Wait for server connection confirmation before sending
+    };
+
+    let fullMessage = "";
+    let messageSent = false;
+    
+    const sendChatMessage = () => {
+      if (messageSent) return;
+      messageSent = true;
       
       try {
         const payload = JSON.stringify({
@@ -178,25 +178,21 @@ export default function ChatFixed() {
           imageData: selectedImage,
         });
         ws.send(payload);
-        console.log('[Chat] Message SENT successfully, payload length:', payload.length);
       } catch (error) {
-        console.error('[Chat] Failed to send WebSocket message:', error);
-        toast({
-          title: "Send Error",
-          description: "Failed to send message over WebSocket",
-          variant: "destructive",
-        });
-        setIsStreaming(false);
+        console.error('Failed to send message:', error);
+        messageSent = false;
       }
       
-      // Clear image after sending
       setSelectedImage(null);
     };
-
-    let fullMessage = "";
+    
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === "chunk") {
+      
+      if (data.type === "connected") {
+        // Connection confirmed, now send the message
+        setTimeout(sendChatMessage, 50);
+      } else if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
         fullMessage += data.content;
       } else if (data.type === "done") {

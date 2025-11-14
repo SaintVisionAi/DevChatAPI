@@ -1,4 +1,5 @@
 // Reference: javascript_log_in_with_replit, javascript_websocket blueprints
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
@@ -87,18 +88,18 @@ app.use((req, res, next) => {
       const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
 
       // Load session from PostgreSQL using shared session store
-      const { sessionStore } = await import('./replitAuth');
+      const { sessionStore } = await import('./simple-auth');
       
       sessionStore.get(sessionId, async (err: any, session: any) => {
-        if (err || !session || !session.passport || !session.passport.user) {
+        if (err || !session || !session.userId) {
           console.error("WebSocket connection rejected: Invalid or expired session", err);
           ws.close(1008, "Unauthorized - Invalid session");
           return;
         }
 
-        // Extract user from OIDC session
-        const userId = session.passport.user.claims.sub;
-        const email = session.passport.user.claims.email;
+        // Extract user from simple-auth session
+        const userId = session.userId;
+        const email = session.user?.email;
 
         if (!userId || !email) {
           console.error("WebSocket connection rejected: No user in session");
@@ -137,11 +138,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();

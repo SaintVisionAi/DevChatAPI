@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Check, Shield, Users, Zap } from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 declare global {
   namespace JSX {
@@ -15,6 +18,8 @@ declare global {
 }
 
 export default function Pricing() {
+  const { isAuthenticated } = useAuth();
+
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://js.stripe.com/v3/pricing-table.js';
@@ -48,8 +53,36 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Navigation - only show for unauthenticated users */}
+      {!isAuthenticated && (
+        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-primary font-bold text-lg">S</span>
+              </div>
+              <span className="font-semibold text-lg">SaintSal</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Home
+              </Link>
+              <Link href="/pricing" className="text-sm text-foreground font-medium">
+                Pricing
+              </Link>
+              <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                API Docs
+              </Link>
+              <Button size="sm" asChild>
+                <a href="/login">Sign In</a>
+              </Button>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Header */}
-      <section className="py-20 px-6 border-b border-border">
+      <section className={`py-20 px-6 border-b border-border ${!isAuthenticated ? 'pt-32' : ''}`}>
         <div className="max-w-4xl mx-auto text-center">
           <Badge variant="outline" className="mb-4 border-primary/30">
             Protected by U.S. Patent #10,290,222

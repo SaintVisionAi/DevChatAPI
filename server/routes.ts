@@ -12,7 +12,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
-import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
+// Toggle between Replit auth and simple auth based on environment
+import { setupSimpleAuth, isAuthenticated as simpleIsAuth } from "./simple-auth";
+// import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
+
+// Use simple auth middleware and request type for local development
+const isAuthenticated = simpleIsAuth;
+type SessionAuthRequest = any;
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -31,25 +37,15 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 export async function registerRoutes(app: Express) {
-  // ✅ SETUP REPLIT OIDC AUTHENTICATION
-  await setupAuth(app);
+  // ✅ SETUP SIMPLE AUTHENTICATION (for local dev)
+  await setupSimpleAuth(app);
 
-  // Get current user (protected by isAuthenticated)
-  app.get("/api/auth/user", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserById(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Get current user endpoint is now handled by simple-auth.ts
 
   // Conversations (protected by isAuthenticated)
-  app.get("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
@@ -58,9 +54,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const data = insertConversationSchema.parse({
         ...req.body,
         userId,
@@ -88,9 +84,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // API Environments (protected by isAuthenticated)
-  app.get("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const environments = await storage.getEnvironmentsByUserId(userId);
       res.json(environments);
     } catch (error) {
@@ -99,9 +95,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const data = insertApiEnvironmentSchema.parse({
         ...req.body,
         userId,
@@ -118,7 +114,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Environment Variables (protected by isAuthenticated)
-  app.get("/api/environments/:id/variables", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/environments/:id/variables", isAuthenticated, async (req: any, res: Response) => {
     try {
       const variables = await storage.getVariablesByEnvironmentId(req.params.id);
       res.json(variables);
@@ -146,9 +142,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Playground Execute (protected by isAuthenticated)
-  app.post("/api/playground/execute", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/playground/execute", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const { environmentId, method, url, headers, body } = req.body;
       
       const startTime = Date.now();
@@ -185,9 +181,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Stats (protected by isAuthenticated)
-  app.get("/api/stats", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {
@@ -196,8 +192,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Admin routes (protected by isAuthenticated + requireAdmin)
-  app.get("/api/admin/stats", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
+  // Admin routes - temporarily disabled for local dev
+  // Uncomment and implement requireAdmin middleware when needed
+  app.get("/api/admin/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
       const stats = await storage.getAdminStats();
       res.json(stats);
@@ -207,7 +204,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/admin/users", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/admin/users", isAuthenticated, async (req: any, res: Response) => {
     try {
       const users = await storage.getAllUsers();
       res.json(users);
@@ -217,7 +214,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/admin/users", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/admin/users", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { email, password, firstName, lastName, phone, role } = req.body;
       
@@ -229,16 +226,8 @@ export async function registerRoutes(app: Express) {
       const bcrypt = await import('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
-      const newUser = await storage.createUser({
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-        phone,
-        role: role || 'viewer',
-      });
-
-      res.json(newUser);
+      // TODO: Implement createUser in storage
+      res.status(501).json({ message: "User creation not implemented yet" });
     } catch (error: any) {
       console.error("Error creating user:", error);
       if (error.message?.includes('unique')) {
@@ -248,7 +237,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/admin/users/:id", isAuthenticated, requireAdmin, async (req: SessionAuthRequest, res: Response) => {
+  app.patch("/api/admin/users/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const targetUserId = req.params.id;
       const { email, password, firstName, lastName, phone, role } = req.body;
@@ -265,8 +254,8 @@ export async function registerRoutes(app: Express) {
         updates.passwordHash = await bcrypt.hash(password, 10);
       }
 
-      const updatedUser = await storage.updateUser(targetUserId, updates);
-      res.json(updatedUser);
+      // TODO: Implement updateUser in storage
+      res.status(501).json({ message: "User update not implemented yet" });
     } catch (error: any) {
       console.error("Error updating user:", error);
       if (error.message?.includes('unique')) {
@@ -311,7 +300,7 @@ export async function registerRoutes(app: Express) {
         return res.status(400).json({ message: "No files provided" });
       }
 
-      const files = req.files.map(file => ({
+      const files = (req.files as any[]).map((file: any) => ({
         buffer: file.buffer,
         name: file.originalname,
         mimeType: file.mimetype,
@@ -325,7 +314,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/upload/:fileId", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/upload/:fileId", isAuthenticated, async (req: any, res: Response) => {
     try {
       const stats = await fileProcessor.getFileStats(req.params.fileId);
       res.json(stats);

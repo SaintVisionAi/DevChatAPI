@@ -1,51 +1,85 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# Dependencies
+node_modules/
+package-lock.json
 
-# Environment variables
+# Build output
+dist/
+.cache/
+
+# Environment variables (NEVER commit secrets)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# IDE
+# IDE & Editor
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # OS files
+.DS_Store
 Thumbs.db
+desktop.ini
 
-# Replit
-.replit
-replit.nix
+# Replit specific (generated files)
 .config/
-.cache/
 .upm/
+.breakpoints
 
-# Database
+# Database files
 *.sqlite
 *.sqlite3
+*.db
 
 # Testing
 coverage/
-.nyc_output
+.nyc_output/
+*.test.js
+*.spec.js
 
-# Temporary files
+# Temporary & development files
 tmp/
 temp/
 *.tmp
 *.temp
+*.bak
+*.old
 
-# Attached assets (prevent accidental secret commits)
-attached_assets/*.txt
-attached_assets/*Pasted*
+# Development/Testing files (not needed for production)
+test_ws.js
+test_ws.mjs
+create-user.sql
+drop-old-schema.sql
+reset-database.ts
+cookies.txt
+*.png
+*.jpg
+*.jpeg
+*.gif
+attached_assets/
+
+# Documentation/Notes (keep in repo but can be ignored if preferred)
+# Uncomment below to ignore these:
+# CHAT_READY.md
+# TEST_CHAT.md
+# TEST_NOW.md
+# TROUBLESHOOT_CHAT.md
+# design_guidelines.md
+
+# Keep these for Replit deployment:
+# .replit (needed for Replit)
+# replit.nix (needed for Replit)
+# replit.md (documentation)
+# .env.example (template for environment variables)

@@ -1,9 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code } from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ApiDocs() {
+  const { isAuthenticated } = useAuth();
+
   const endpoints = [
     {
       method: "POST",
@@ -56,8 +61,36 @@ export default function ApiDocs() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Navigation - only show for unauthenticated users */}
+      {!isAuthenticated && (
+        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-primary font-bold text-lg">S</span>
+              </div>
+              <span className="font-semibold text-lg">SaintSal</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Home
+              </Link>
+              <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
+              </Link>
+              <Link href="/docs" className="text-sm text-foreground font-medium">
+                API Docs
+              </Link>
+              <Button size="sm" asChild>
+                <a href="/login">Sign In</a>
+              </Button>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Header */}
-      <section className="py-20 px-6 border-b border-border">
+      <section className={`py-20 px-6 border-b border-border ${!isAuthenticated ? 'pt-32' : ''}`}>
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">

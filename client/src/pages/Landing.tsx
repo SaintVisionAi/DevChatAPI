@@ -63,7 +63,7 @@ export default function Landing() {
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-pricing">
               Pricing
             </Link>
-            <Link href="/api-docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-docs">
+            <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-docs">
               API Docs
             </Link>
             <Link href="/playground" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-playground">

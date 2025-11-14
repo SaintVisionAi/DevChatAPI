@@ -1,4 +1,5 @@
 // Seed admin user
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 
