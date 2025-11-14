@@ -136,11 +136,19 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  const isDevelopment = process.env.NODE_ENV === "development" || 
-                        !process.env.NODE_ENV || 
-                        process.env.NODE_ENV === "dev";
+  
+  // Check if we're in development mode by looking for build directory
+  // This works around NODE_ENV being set in Replit Secrets
+  const fs = await import("fs");
+  const path = await import("path");
+  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const hasBuild = fs.existsSync(distPath);
+  
+  // Use Vite dev server if no build exists OR if explicitly in dev mode
+  const isDevelopment = !hasBuild || process.env.NODE_ENV === "development";
   
   console.log(`[Server] NODE_ENV: "${process.env.NODE_ENV}"`);
+  console.log(`[Server] Build exists: ${hasBuild}`);
   console.log(`[Server] isDevelopment: ${isDevelopment}`);
   console.log(`[Server] Using ${isDevelopment ? 'Vite dev server' : 'static build'}`);
   
