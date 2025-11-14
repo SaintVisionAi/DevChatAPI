@@ -1,694 +1,681 @@
-import { useEffect, useState, useRef } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Send, 
-  Plus, 
-  Loader2,
-  Paperclip, 
-  Code2, 
-  Image as ImageIcon, 
-  Search, 
-  Database, 
-  Calculator, 
-  Sparkles, 
-  Volume2, 
-  VolumeX,
-  MessageSquare,
-  PanelLeftClose,
-  PanelLeft,
-  Mic
-} from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import type { User, Conversation, Message } from "@shared/schema";
-import { format } from "date-fns";
-import { ModeSelector } from "@/components/ModeSelector";
-import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
-import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { cn } from "@/lib/utils";
+    import { useEffect, useState, useRef } from "react";
+    import { useAuth } from "@/hooks/useAuth";
+    import { useToast } from "@/hooks/use-toast";
+    import { Button } from "@/components/ui/button";
+    import { Textarea } from "@/components/ui/textarea";
+    import { Card } from "@/components/ui/card";
+    import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+    import { Badge } from "@/components/ui/badge";
+    import {
+      Select,
+      SelectContent,
+      SelectItem,
+      SelectTrigger,
+      SelectValue,
+    } from "@/components/ui/select";
+    import { 
+      Send, 
+      Plus, 
+      Loader2,
+      Paperclip, 
+      Code2, 
+      Image as ImageIcon, 
+      Search, 
+      Database, 
+      Calculator, 
+      Sparkles, 
+      Volume2, 
+      VolumeX,
+      MessageSquare,
+      PanelLeftClose,
+      PanelLeft,
+      Mic
+    } from "lucide-react";
+    import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+    import { apiRequest } from "@/lib/queryClient";
+    import { isUnauthorizedError } from "@/lib/authUtils";
+    import type { User, Conversation, Message } from "@shared/schema";
+    import { format } from "date-fns";
+    import { ModeSelector } from "@/components/ModeSelector";
+    import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
+    import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+    import { cn } from "@/lib/utils";
 
-type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
+    type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
 
-export default function ChatFixed() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth() as {
-    user: User | undefined;
-    isLoading: boolean;
-    isAuthenticated: boolean;
-  };
+    export default function ChatFixed() {
+      const { toast } = useToast();
+      const queryClient = useQueryClient();
+      const { user, isLoading: authLoading, isAuthenticated } = useAuth() as {
+        user: User | undefined;
+        isLoading: boolean;
+        isAuthenticated: boolean;
+      };
 
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingMessage, setStreamingMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
-  const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
-  const [autoSpeak, setAutoSpeak] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
-    rate: 1.1,
-    pitch: 1.0,
-    volume: 1.0,
-  });
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+      const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+      const [input, setInput] = useState("");
+      const [isStreaming, setIsStreaming] = useState(false);
+      const [streamingMessage, setStreamingMessage] = useState("");
+      const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+      const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
+      const [autoSpeak, setAutoSpeak] = useState(false);
+      const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+      const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "Please login to continue...",
-        variant: "destructive",
+      const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
+        rate: 1.1,
+        pitch: 1.0,
+        volume: 1.0,
       });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-    }
-  }, [isAuthenticated, authLoading, toast]);
+      const messagesEndRef = useRef<HTMLDivElement>(null);
+      const wsRef = useRef<WebSocket | null>(null);
+      const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: conversations } = useQuery<Conversation[]>({
-    queryKey: ["/api/conversations"],
-    enabled: isAuthenticated,
-  });
-
-  const { data: messages } = useQuery<Message[]>({
-    queryKey: ["/api/conversations", selectedConversationId, "messages"],
-    enabled: !!selectedConversationId,
-  });
-
-  const createConversationMutation = useMutation({
-    mutationFn: async (title: string): Promise<Conversation> => {
-      const response = await apiRequest("POST", "/api/conversations", {
-        title,
-        model: selectedModel,
-      });
-      return await response.json();
-    },
-    onSuccess: (newConversation: Conversation) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
-      setSelectedConversationId(newConversation.id);
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Please login to continue...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to create conversation",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, streamingMessage]);
-
-  const handleSendMessage = async (messageOverride?: string) => {
-    const messageText = messageOverride || input;
-    if (!messageText.trim() || isStreaming) return;
-
-    setInput("");
-
-    let conversationId = selectedConversationId;
-    if (!conversationId) {
-      const newConv = await createConversationMutation.mutateAsync(messageText.slice(0, 50));
-      conversationId = newConv.id;
-    }
-
-    setIsStreaming(true);
-    setStreamingMessage("");
-
-    // Construct WebSocket URL correctly using origin
-    const wsUrl = new URL('/ws', window.location.origin);
-    wsUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    console.log('[Chat] Connecting to WebSocket:', wsUrl.href);
-    
-    const ws = new WebSocket(wsUrl.href);
-    wsRef.current = ws;
-
-    // ✅ Store message payload to send after "ready" signal
-    const messagePayload = JSON.stringify({
-      type: "chat",
-      conversationId,
-      message: messageText,
-      model: selectedModel,
-      mode: selectedMode,
-      imageData: selectedImage,
-    });
-
-    ws.onopen = () => {
-      console.log('[Chat] WebSocket OPENED - waiting for READY signal...');
-      console.log('[Chat] WebSocket readyState:', ws.readyState);
-      console.log('[Chat] Queued message payload (will send after ready):', JSON.stringify({
-        type: "chat",
-        conversationId,
-        message: messageText.substring(0, 50),
-        model: selectedModel,
-        mode: selectedMode,
-      }));
-      // ✅ DON'T send yet - wait for "ready" signal from server
-    };
-
-    let fullMessage = "";
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      
-      // ✅ Handle "ready" signal from server
-      if (data.type === "ready") {
-        console.log('[Chat] ✅ Received READY signal from server - sending message now');
-        console.log('[Chat] Server userId:', data.userId);
-        try {
-          ws.send(messagePayload);
-          console.log('[Chat] ✅ Message SENT successfully, payload length:', messagePayload.length);
-          // Clear image after sending
-          setSelectedImage(null);
-        } catch (error) {
-          console.error('[Chat] Failed to send WebSocket message:', error);
+      useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
           toast({
-            title: "Send Error",
-            description: "Failed to send message over WebSocket",
+            title: "Unauthorized",
+            description: "Please login to continue...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 500);
+        }
+      }, [isAuthenticated, authLoading, toast]);
+
+      const { data: conversations } = useQuery<Conversation[]>({
+        queryKey: ["/api/conversations"],
+        enabled: isAuthenticated,
+      });
+
+      const { data: messages } = useQuery<Message[]>({
+        queryKey: ["/api/conversations", selectedConversationId, "messages"],
+        enabled: !!selectedConversationId,
+      });
+
+      const createConversationMutation = useMutation({
+        mutationFn: async (title: string): Promise<Conversation> => {
+          const response = await apiRequest("POST", "/api/conversations", {
+            title,
+            model: selectedModel,
+          });
+          return await response.json();
+        },
+        onSuccess: (newConversation: Conversation) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+          setSelectedConversationId(newConversation.id);
+        },
+        onError: (error: Error) => {
+          if (isUnauthorizedError(error)) {
+            toast({
+              title: "Unauthorized",
+              description: "Please login to continue...",
+              variant: "destructive",
+            });
+            setTimeout(() => {
+              window.location.href = "/login";
+            }, 500);
+            return;
+          }
+          toast({
+            title: "Error",
+            description: "Failed to create conversation",
+            variant: "destructive",
+          });
+        },
+      });
+
+      const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      };
+
+      useEffect(() => {
+        scrollToBottom();
+      }, [messages, streamingMessage]);
+
+      const handleSendMessage = async (messageOverride?: string) => {
+        const messageText = messageOverride || input;
+        if (!messageText.trim() || isStreaming) return;
+
+        setInput("");
+
+        let conversationId = selectedConversationId;
+        if (!conversationId) {
+          const newConv = await createConversationMutation.mutateAsync(messageText.slice(0, 50));
+          conversationId = newConv.id;
+        }
+
+        setIsStreaming(true);
+        setStreamingMessage("");
+
+        // Construct WebSocket URL correctly using origin
+        const wsUrl = new URL('/ws', window.location.origin);
+        wsUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        console.log('[Chat] Connecting to WebSocket:', wsUrl.href);
+
+        const ws = new WebSocket(wsUrl.href);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          // Wait for server connection confirmation before sending
+        };
+
+        let fullMessage = "";
+        let messageSent = false;
+
+        const sendChatMessage = () => {
+          if (messageSent) return;
+          messageSent = true;
+
+          try {
+            const payload = JSON.stringify({
+              type: "chat",
+              conversationId,
+              message: messageText,
+              model: selectedModel,
+              mode: selectedMode,
+              imageData: selectedImage,
+            });
+            ws.send(payload);
+          } catch (error) {
+            console.error('Failed to send message:', error);
+            messageSent = false;
+          }
+
+          setSelectedImage(null);
+        };
+
+        ws.onmessage = async (event) => {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "connected") {
+            // Connection confirmed, now send the message
+            setTimeout(sendChatMessage, 50);
+          } else if (data.type === "chunk") {
+            setStreamingMessage((prev) => prev + data.content);
+            fullMessage += data.content;
+          } else if (data.type === "done") {
+            // Auto-speak in voice mode OR if auto-speak is enabled
+            if ((selectedMode === 'voice' || autoSpeak) && fullMessage) {
+              // Use ElevenLabs TTS for high-quality voice
+              try {
+                const response = await fetch('/api/voice/tts', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({ text: fullMessage }),
+                });
+
+                if (response.ok) {
+                  const audioBlob = await response.blob();
+                  const audioUrl = URL.createObjectURL(audioBlob);
+                  const audio = new Audio(audioUrl);
+                  await audio.play();
+                } else {
+                  // Fallback to browser TTS
+                  speak(fullMessage);
+                }
+              } catch (error) {
+                console.error('TTS error:', error);
+                // Fallback to browser TTS
+                speak(fullMessage);
+              }
+            }
+
+            setIsStreaming(false);
+            setStreamingMessage("");
+            queryClient.invalidateQueries({
+              queryKey: ["/api/conversations", conversationId, "messages"],
+            });
+            ws.close();
+          } else if (data.type === "error") {
+            toast({
+              title: "Error",
+              description: data.message || "Failed to send message",
+              variant: "destructive",
+            });
+            setIsStreaming(false);
+            setStreamingMessage("");
+            ws.close();
+          }
+        };
+
+        ws.onerror = () => {
+          toast({
+            title: "Connection Error",
+            description: "Failed to connect to chat service",
             variant: "destructive",
           });
           setIsStreaming(false);
+          setStreamingMessage("");
+        };
+      };
+
+      const handleStopGeneration = () => {
+        if (wsRef.current) {
+          wsRef.current.close();
+          setIsStreaming(false);
+          setStreamingMessage("");
         }
-        return;
-      }
-      
-      if (data.type === "chunk") {
-        setStreamingMessage((prev) => prev + data.content);
-        fullMessage += data.content;
-      } else if (data.type === "done") {
-        // Auto-speak in voice mode OR if auto-speak is enabled
-        if ((selectedMode === 'voice' || autoSpeak) && fullMessage) {
-          // Use ElevenLabs TTS for high-quality voice
-          try {
-            const response = await fetch('/api/voice/tts', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({ text: fullMessage }),
-            });
-            
-            if (response.ok) {
-              const audioBlob = await response.blob();
-              const audioUrl = URL.createObjectURL(audioBlob);
-              const audio = new Audio(audioUrl);
-              await audio.play();
-            } else {
-              // Fallback to browser TTS
-              speak(fullMessage);
-            }
-          } catch (error) {
-            console.error('TTS error:', error);
-            // Fallback to browser TTS
-            speak(fullMessage);
-          }
-        }
-        
-        setIsStreaming(false);
-        setStreamingMessage("");
-        queryClient.invalidateQueries({
-          queryKey: ["/api/conversations", conversationId, "messages"],
-        });
-        ws.close();
-      } else if (data.type === "error") {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to send message",
-          variant: "destructive",
-        });
-        setIsStreaming(false);
-        setStreamingMessage("");
-        ws.close();
-      }
-    };
+        cancelSpeech();
+      };
 
-    ws.onerror = () => {
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to chat service",
-        variant: "destructive",
-      });
-      setIsStreaming(false);
-      setStreamingMessage("");
-    };
-  };
+      const handleVoiceTranscript = (transcript: string) => {
+        if (!transcript.trim()) return;
+        setInput(transcript);
+        setTimeout(() => handleSendMessage(transcript), 100);
+      };
 
-  const handleStopGeneration = () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      setIsStreaming(false);
-      setStreamingMessage("");
-    }
-    cancelSpeech();
-  };
+      const handleNewChat = () => {
+        setSelectedConversationId(null);
+        setInput("");
+        setSelectedMode('chat');
+        setSelectedImage(null);
+      };
 
-  const handleVoiceTranscript = (transcript: string) => {
-    if (!transcript.trim()) return;
-    setInput(transcript);
-    setTimeout(() => handleSendMessage(transcript), 100);
-  };
+      const handleSuggestion = (suggestion: string) => {
+        setInput(suggestion);
+        handleSendMessage(suggestion);
+      };
 
-  const handleNewChat = () => {
-    setSelectedConversationId(null);
-    setInput("");
-    setSelectedMode('chat');
-    setSelectedImage(null);
-  };
+      const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !file.type.startsWith('image/')) return;
 
-  const handleSuggestion = (suggestion: string) => {
-    setInput(suggestion);
-    handleSendMessage(suggestion);
-  };
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setSelectedImage(reader.result as string);
+          toast({
+            title: "Image attached",
+            description: "Your image is ready to send with your message",
+          });
+        };
+        reader.readAsDataURL(file);
+      };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setSelectedImage(reader.result as string);
-      toast({
-        title: "Image attached",
-        description: "Your image is ready to send with your message",
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const showEmptyState = !selectedConversationId || !messages || messages.length === 0;
-
-  return (
-    <div className="flex h-screen w-full">
-      {/* Collapsible Conversations Sidebar */}
-      <div 
-        className={cn(
-          "border-r border-border flex flex-col bg-muted/20 transition-all duration-300",
-          sidebarCollapsed ? "w-16" : "w-80"
-        )}
-      >
-        <div className="p-4 border-b border-border">
-          {/* SaintSal Logo & Toggle */}
-          <div className="flex items-center justify-between mb-4">
-            <div className={cn("flex items-center gap-3", sidebarCollapsed && "hidden")}>
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary-foreground font-bold text-lg">SS</span>
-              </div>
-              <div>
-                <div className="font-bold text-base text-primary">SaintSal</div>
-                <div className="text-xs text-muted-foreground">Your Gotta Guy™</div>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={cn(sidebarCollapsed && "mx-auto")}
-              data-testid="button-toggle-sidebar"
-            >
-              {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </Button>
+      if (authLoading) {
+        return (
+          <div className="flex items-center justify-center h-screen">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
           </div>
-          
-          {/* New Chat Button */}
-          <Button
-            onClick={handleNewChat}
+        );
+      }
+
+      if (!isAuthenticated) {
+        return null;
+      }
+
+      const showEmptyState = !selectedConversationId || !messages || messages.length === 0;
+
+      return (
+        <div className="flex h-screen w-full">
+          {/* Collapsible Conversations Sidebar */}
+          <div 
             className={cn(
-              "w-full bg-primary hover:bg-primary/90",
-              sidebarCollapsed && "p-2"
+              "border-r border-border flex flex-col bg-muted/20 transition-all duration-300",
+              sidebarCollapsed ? "w-16" : "w-80"
             )}
-            data-testid="button-new-chat"
           >
-            <Plus className={cn("h-4 w-4", !sidebarCollapsed && "mr-2")} />
-            {!sidebarCollapsed && "New Chat"}
-          </Button>
-        </div>
-
-        {/* Conversations List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {!sidebarCollapsed && (
-            <div className="text-xs text-muted-foreground font-medium mb-2">
-              Conversations
-            </div>
-          )}
-          {conversations?.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => setSelectedConversationId(conv.id)}
-              className={cn(
-                "w-full text-left rounded-lg transition-all hover-elevate active-elevate-2",
-                selectedConversationId === conv.id ? "bg-accent" : "",
-                sidebarCollapsed ? "p-3 flex justify-center" : "p-3"
-              )}
-              data-testid={`button-conversation-${conv.id}`}
-              title={sidebarCollapsed ? conv.title : undefined}
-            >
-              {sidebarCollapsed ? (
-                <MessageSquare className="h-4 w-4" />
-              ) : (
-                <>
-                  <div className="font-medium truncate text-sm">{conv.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(conv.updatedAt!), "MMM d, h:mm a")}
+            <div className="p-4 border-b border-border">
+              {/* SaintSal Logo & Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn("flex items-center gap-3", sidebarCollapsed && "hidden")}>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0">
+                    <span className="text-primary-foreground font-bold text-lg">SS</span>
                   </div>
-                </>
-              )}
-            </button>
-          ))}
-          {(!conversations || conversations.length === 0) && !sidebarCollapsed && (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No conversations yet
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="flex items-center justify-between h-16 px-6 border-b border-border">
-          <div className="flex items-center gap-4">
-            {selectedConversationId && messages && messages.length > 0 && (
-              <h2 className="font-semibold text-lg truncate">
-                {conversations?.find(c => c.id === selectedConversationId)?.title}
-              </h2>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Model Selector */}
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
-                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                <SelectItem value="gpt-5">GPT-5</SelectItem>
-              </SelectContent>
-            </Select>
-            {/* Auto-speak Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setAutoSpeak(!autoSpeak)}
-              className={autoSpeak ? "text-primary" : "text-muted-foreground"}
-              data-testid="button-auto-speak"
-            >
-              {autoSpeak ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-            </Button>
-          </div>
-        </header>
-
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto">
-          {showEmptyState ? (
-            /* Empty State */
-            <div className="h-full flex flex-col items-center justify-center px-6">
-              <div className="max-w-2xl w-full text-center space-y-8">
-                <div className="flex justify-center">
-                  <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20">
-                    <Sparkles className="w-10 h-10 text-primary" />
+                  <div>
+                    <div className="font-bold text-base text-primary">SaintSal</div>
+                    <div className="text-xs text-muted-foreground">Your Gotta Guy™</div>
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  <h1 className="text-4xl font-bold" data-testid="text-welcome-title">
-                    Cookin' Knowledge
-                  </h1>
-                  <p className="text-lg text-accent font-medium">
-                    Your Gotta Guy™
-                  </p>
-                  <p className="text-base text-muted-foreground">
-                    AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("Generate code for a React component")}
-                    data-testid="button-suggestion-code"
-                  >
-                    <Code2 className="h-4 w-4 mr-2" />
-                    Generate Code
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("What can you do?")}
-                    data-testid="button-suggestion-help"
-                  >
-                    What can you do?
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleSuggestion("Help me build something")}
-                    data-testid="button-suggestion-build"
-                  >
-                    Help me build something
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className={cn(sidebarCollapsed && "mx-auto")}
+                  data-testid="button-toggle-sidebar"
+                >
+                  {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </Button>
               </div>
+
+              {/* New Chat Button */}
+              <Button
+                onClick={handleNewChat}
+                className={cn(
+                  "w-full bg-primary hover:bg-primary/90",
+                  sidebarCollapsed && "p-2"
+                )}
+                data-testid="button-new-chat"
+              >
+                <Plus className={cn("h-4 w-4", !sidebarCollapsed && "mr-2")} />
+                {!sidebarCollapsed && "New Chat"}
+              </Button>
             </div>
-          ) : (
-            /* Messages */
-            <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-              {messages?.map((message) => (
-                <div key={message.id} className="flex gap-4">
-                  {message.role === "user" ? (
-                    <>
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || user?.email || "User"} />
-                        <AvatarFallback>
-                          {user?.firstName?.[0] || user?.email?.[0] || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <Card className="p-4 bg-accent/10">
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        </Card>
-                        <div className="text-xs text-muted-foreground mt-1 px-1">
-                          {format(new Date(message.createdAt!), "h:mm a")}
-                        </div>
-                      </div>
-                    </>
+
+            {/* Conversations List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {!sidebarCollapsed && (
+                <div className="text-xs text-muted-foreground font-medium mb-2">
+                  Conversations
+                </div>
+              )}
+              {conversations?.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => setSelectedConversationId(conv.id)}
+                  className={cn(
+                    "w-full text-left rounded-lg transition-all hover-elevate active-elevate-2",
+                    selectedConversationId === conv.id ? "bg-accent" : "",
+                    sidebarCollapsed ? "p-3 flex justify-center" : "p-3"
+                  )}
+                  data-testid={`button-conversation-${conv.id}`}
+                  title={sidebarCollapsed ? conv.title : undefined}
+                >
+                  {sidebarCollapsed ? (
+                    <MessageSquare className="h-4 w-4" />
                   ) : (
                     <>
+                      <div className="font-medium truncate text-sm">{conv.title}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(conv.updatedAt!), "MMM d, h:mm a")}
+                      </div>
+                    </>
+                  )}
+                </button>
+              ))}
+              {(!conversations || conversations.length === 0) && !sidebarCollapsed && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No conversations yet
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col">
+            {/* Header */}
+            <header className="flex items-center justify-between h-16 px-6 border-b border-border">
+              <div className="flex items-center gap-4">
+                {selectedConversationId && messages && messages.length > 0 && (
+                  <h2 className="font-semibold text-lg truncate">
+                    {conversations?.find(c => c.id === selectedConversationId)?.title}
+                  </h2>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Model Selector */}
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
+                    <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                    <SelectItem value="gpt-5">GPT-5</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* Auto-speak Toggle */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setAutoSpeak(!autoSpeak)}
+                  className={autoSpeak ? "text-primary" : "text-muted-foreground"}
+                  data-testid="button-auto-speak"
+                >
+                  {autoSpeak ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                </Button>
+              </div>
+            </header>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto">
+              {showEmptyState ? (
+                /* Empty State */
+                <div className="h-full flex flex-col items-center justify-center px-6">
+                  <div className="max-w-2xl w-full text-center space-y-8">
+                    <div className="flex justify-center">
+                      <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                        <Sparkles className="w-10 h-10 text-primary" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h1 className="text-4xl font-bold" data-testid="text-welcome-title">
+                        Cookin' Knowledge
+                      </h1>
+                      <p className="text-lg text-accent font-medium">
+                        Your Gotta Guy™
+                      </p>
+                      <p className="text-base text-muted-foreground">
+                        AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      <Button
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => handleSuggestion("Generate code for a React component")}
+                        data-testid="button-suggestion-code"
+                      >
+                        <Code2 className="h-4 w-4 mr-2" />
+                        Generate Code
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => handleSuggestion("What can you do?")}
+                        data-testid="button-suggestion-help"
+                      >
+                        What can you do?
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => handleSuggestion("Help me build something")}
+                        data-testid="button-suggestion-build"
+                      >
+                        Help me build something
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Messages */
+                <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+                  {messages?.map((message) => (
+                    <div key={message.id} className="flex gap-4">
+                      {message.role === "user" ? (
+                        <>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || user?.email || "User"} />
+                            <AvatarFallback>
+                              {user?.firstName?.[0] || user?.email?.[0] || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <Card className="p-4 bg-accent/10">
+                              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            </Card>
+                            <div className="text-xs text-muted-foreground mt-1 px-1">
+                              {format(new Date(message.createdAt!), "h:mm a")}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <Card className="p-4 bg-background/40 backdrop-blur-sm border-border/50">
+                              <p className="text-sm whitespace-pre-wrap">{String(message.content)}</p>
+                              {/* Display citations if present */}
+                              {message.searchResults && Array.isArray(message.searchResults) && message.searchResults.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-border">
+                                  <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
+                                  <div className="space-y-1">
+                                    {(message.searchResults as any[]).map((citation: any, idx: number) => (
+                                      <div key={idx} className="flex items-start gap-2">
+                                        <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                                          {idx + 1}
+                                        </Badge>
+                                        <a 
+                                          href={citation}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline truncate"
+                                          data-testid={`citation-${idx}`}
+                                        >
+                                          {citation}
+                                        </a>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </Card>
+                            <div className="text-xs text-muted-foreground mt-1 px-1 flex items-center gap-2">
+                              {format(new Date(message.createdAt!), "h:mm a")}
+                              {message.model && (
+                                <Badge variant="outline" className="text-xs">
+                                  {message.model}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                  {isStreaming && streamingMessage && (
+                    <div className="flex gap-4">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <Card className="p-4 bg-background/40 backdrop-blur-sm border-border/50">
-                          <p className="text-sm whitespace-pre-wrap">{String(message.content)}</p>
-                          {/* Display citations if present */}
-                          {message.searchResults && Array.isArray(message.searchResults) && message.searchResults.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-border">
-                              <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
-                              <div className="space-y-1">
-                                {(message.searchResults as any[]).map((citation: any, idx: number) => (
-                                  <div key={idx} className="flex items-start gap-2">
-                                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                                      {idx + 1}
-                                    </Badge>
-                                    <a 
-                                      href={citation}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-primary hover:underline truncate"
-                                      data-testid={`citation-${idx}`}
-                                    >
-                                      {citation}
-                                    </a>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          <p className="text-sm whitespace-pre-wrap">{streamingMessage}</p>
                         </Card>
-                        <div className="text-xs text-muted-foreground mt-1 px-1 flex items-center gap-2">
-                          {format(new Date(message.createdAt!), "h:mm a")}
-                          {message.model && (
-                            <Badge variant="outline" className="text-xs">
-                              {message.model}
-                            </Badge>
-                          )}
-                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
-                </div>
-              ))}
 
-              {isStreaming && streamingMessage && (
-                <div className="flex gap-4">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <Card className="p-4 bg-background/40 backdrop-blur-sm border-border/50">
-                      <p className="text-sm whitespace-pre-wrap">{streamingMessage}</p>
-                    </Card>
-                  </div>
+                  <div ref={messagesEndRef} />
                 </div>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
 
-        {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
-        <div className="border-t border-border bg-background/95 backdrop-blur sticky bottom-0 z-50 pb-safe">
-          {/* Mode Selector - Clean at Bottom for Mobile */}
-          <div className="border-b border-border bg-muted/5">
-            <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1.5 sm:py-2">
-              <ModeSelector
-                currentMode={selectedMode}
-                onModeChange={setSelectedMode}
-                disabled={isStreaming}
-                className="scale-90 sm:scale-100 origin-center"
-              />
-            </div>
-          </div>
-          
-          <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 sm:py-3">
-            <div className="flex gap-1 sm:gap-2 items-end">
-              {/* Mobile: Walkie-Talkie FIRST on small screens - CLEAN */}
-              <div className="md:hidden">
-                <WalkieTalkieButton
-                  onTranscript={handleVoiceTranscript}
-                  className="h-[50px] w-[50px]"
-                  disabled={isStreaming}
-                />
-              </div>
-              
-              <div className="flex-1 relative">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder={
-                    selectedMode === 'chat' ? "Your Gotta Guy™..." :
-                    selectedMode === 'search' ? "Search web..." :
-                    selectedMode === 'research' ? "Deep research..." :
-                    selectedMode === 'code' ? "Code needs..." :
-                    selectedMode === 'voice' ? "Press mic 🎤" :
-                    "Message..."
-                  }
-                  className="min-h-[50px] sm:min-h-[60px] pr-12 sm:pr-20 resize-none text-sm sm:text-base"
-                  disabled={isStreaming}
-                  data-testid="input-message"
-                />
-                {/* Attachment Button - CLEAN MOBILE */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1 h-10 w-10 sm:h-8 sm:w-8 sm:right-2 sm:top-2 rounded-full bg-background/50 hover:bg-primary/10 backdrop-blur-sm border border-border/30"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="button-attach"
-                >
-                  {selectedImage ? (
-                    <ImageIcon className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
-                  ) : (
-                    <Paperclip className="h-5 w-5 sm:h-4 sm:w-4" />
-                  )}
-                </Button>
-              </div>
-              
-              {/* Hidden File Input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-                data-testid="input-file"
-              />
-
-              {/* Desktop: Walkie-Talkie normal position */}
-              <div className="hidden md:block">
-                <WalkieTalkieButton
-                  onTranscript={handleVoiceTranscript}
-                  className="h-[60px]"
-                  disabled={isStreaming}
-                />
+            {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
+            <div className="border-t border-border bg-background/95 backdrop-blur sticky bottom-0 z-50 pb-safe">
+              {/* Mode Selector - Clean at Bottom for Mobile */}
+              <div className="border-b border-border bg-muted/5">
+                <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1.5 sm:py-2">
+                  <ModeSelector
+                    currentMode={selectedMode}
+                    onModeChange={setSelectedMode}
+                    disabled={isStreaming}
+                    className="scale-90 sm:scale-100 origin-center"
+                  />
+                </div>
               </div>
 
-              {/* Send Button - SIMPLE */}
-              <Button
-                onClick={() => handleSendMessage()}
-                className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto bg-primary hover:bg-primary/90"
-                disabled={!input.trim() && !selectedImage || isStreaming}
-                data-testid="button-send"
-              >
-                {isStreaming ? (
-                  <>
-                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    <span className="hidden sm:inline ml-2">Sending...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                    <span className="hidden sm:inline ml-2">Send</span>
-                  </>
-                )}
-              </Button>
+              <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 sm:py-3">
+                <div className="flex gap-1 sm:gap-2 items-end">
+                  {/* Mobile: Walkie-Talkie FIRST on small screens - CLEAN */}
+                  <div className="md:hidden">
+                    <WalkieTalkieButton
+                      onTranscript={handleVoiceTranscript}
+                      className="h-[50px] w-[50px]"
+                      disabled={isStreaming}
+                    />
+                  </div>
+
+                  <div className="flex-1 relative">
+                    <Textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder={
+                        selectedMode === 'chat' ? "Your Gotta Guy™..." :
+                        selectedMode === 'search' ? "Search web..." :
+                        selectedMode === 'research' ? "Deep research..." :
+                        selectedMode === 'code' ? "Code needs..." :
+                        selectedMode === 'voice' ? "Press mic 🎤" :
+                        "Message..."
+                      }
+                      className="min-h-[50px] sm:min-h-[60px] pr-12 sm:pr-20 resize-none text-sm sm:text-base"
+                      disabled={isStreaming}
+                      data-testid="input-message"
+                    />
+                    {/* Attachment Button - CLEAN MOBILE */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1 h-10 w-10 sm:h-8 sm:w-8 sm:right-2 sm:top-2 rounded-full bg-background/50 hover:bg-primary/10 backdrop-blur-sm border border-border/30"
+                      onClick={() => fileInputRef.current?.click()}
+                      data-testid="button-attach"
+                    >
+                      {selectedImage ? (
+                        <ImageIcon className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
+                      ) : (
+                        <Paperclip className="h-5 w-5 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Hidden File Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    data-testid="input-file"
+                  />
+
+                  {/* Desktop: Walkie-Talkie normal position */}
+                  <div className="hidden md:block">
+                    <WalkieTalkieButton
+                      onTranscript={handleVoiceTranscript}
+                      className="h-[60px]"
+                      disabled={isStreaming}
+                    />
+                  </div>
+
+                  {/* Send Button - SIMPLE */}
+                  <Button
+                    onClick={() => handleSendMessage()}
+                    className="h-[50px] w-[50px] sm:h-[60px] sm:w-auto bg-primary hover:bg-primary/90"
+                    disabled={!input.trim() && !selectedImage || isStreaming}
+                    data-testid="button-send"
+                  >
+                    {isStreaming ? (
+                      <>
+                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                        <span className="hidden sm:inline ml-2">Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="hidden sm:inline ml-2">Send</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }

@@ -1,4 +1,5 @@
 // Reference: javascript_log_in_with_replit, javascript_websocket blueprints
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
@@ -9,17 +10,19 @@ import { setupVite, serveStatic, log } from "./vite";
 const app = express();
 const server = createServer(app);
 
-declare module 'http' {
+declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown
+    rawBody: unknown;
   }
 }
 
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
@@ -61,87 +64,63 @@ app.use((req, res, next) => {
 
   wss.on("connection", async (ws: any, request: any) => {
     try {
-      console.log('[WS] New connection attempt...');
-      
       // Parse session from cookie to get authenticated user
       const cookieHeader = request.headers.cookie;
       if (!cookieHeader) {
-        console.error("[WS] Connection rejected: No session cookie");
+        console.error("WebSocket connection rejected: No session cookie");
         ws.close(1008, "Unauthorized - No session");
         return;
       }
 
       // Extract session ID from cookie
-      const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
+      const cookies = cookieHeader
+        .split(";")
+        .reduce((acc: any, cookie: string) => {
+          const [key, value] = cookie.trim().split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
 
-      const sessionCookie = cookies['connect.sid'];
+      const sessionCookie = cookies["connect.sid"];
       if (!sessionCookie) {
-        console.error("[WS] Connection rejected: No session ID");
+        console.error("WebSocket connection rejected: No session ID");
         ws.close(1008, "Unauthorized - No session ID");
         return;
       }
 
       // Decode session ID (format: s:sessionId.signature)
-      const sessionId = decodeURIComponent(sessionCookie).split('.')[0].substring(2);
-      console.log('[WS] Extracted session ID:', sessionId.substring(0, 10) + '...');
+      const sessionId = decodeURIComponent(sessionCookie)
+        .split(".")[0]
+        .substring(2);
 
       // Load session from PostgreSQL using shared session store
-      const { sessionStore } = await import('./replitAuth');
-      
-      // ✅ FIX: Convert callback to Promise to AWAIT session load
-      console.log('[WS] Loading session from store...');
-      const session: any = await new Promise((resolve, reject) => {
-        sessionStore.get(sessionId, (err: any, session: any) => {
-          if (err) {
-            console.error('[WS] Session load error:', err);
-            reject(err);
-          } else {
-            console.log('[WS] Session loaded:', !!session);
-            resolve(session);
-          }
-        });
+      const { sessionStore } = await import("./simple-auth");
+
+      sessionStore.get(sessionId, async (err: any, session: any) => {
+        if (err || !session || !session.userId) {
+          console.error(
+            "WebSocket connection rejected: Invalid or expired session",
+            err,
+          );
+          ws.close(1008, "Unauthorized - Invalid session");
+          return;
+        }
+
+        // Extract user from simple-auth session
+        const userId = session.userId;
+        const email = session.user?.email;
+
+        if (!userId || !email) {
+          console.error("WebSocket connection rejected: No user in session");
+          ws.close(1008, "Unauthorized - No user");
+          return;
+        }
+
+        console.log(`WebSocket authenticated for user: ${email} (${userId})`);
+        handleWebSocket(ws, request, userId, email);
       });
-
-      // Validate session
-      if (!session || !session.passport || !session.passport.user) {
-        console.error("[WS] Connection rejected: Invalid or expired session");
-        ws.close(1008, "Unauthorized - Invalid session");
-        return;
-      }
-
-      // Extract user from OIDC session
-      const userId = session.passport.user.claims.sub;
-      const email = session.passport.user.claims.email;
-
-      if (!userId || !email) {
-        console.error("[WS] Connection rejected: No user in session");
-        ws.close(1008, "Unauthorized - No user");
-        return;
-      }
-
-      console.log(`[WS] ✅ Auth complete for: ${email} (${userId})`);
-      console.log('[WS] Registering message handlers...');
-      
-      // ✅ NOW register handlers (session is loaded, auth is complete)
-      handleWebSocket(ws, request, userId, email);
-      
-      console.log('[WS] ✅ Handlers registered, sending READY signal');
-      
-      // ✅ Send "ready" signal to client
-      ws.send(JSON.stringify({
-        type: "ready",
-        userId,
-        email
-      }));
-      
-      console.log('[WS] ✅ Connection fully initialized');
-      
     } catch (error) {
-      console.error("[WS] Connection error:", error);
+      console.error("WebSocket connection error:", error);
       ws.close(1011, "Internal server error");
     }
   });
@@ -167,12 +146,8 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();

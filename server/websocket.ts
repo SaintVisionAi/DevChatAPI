@@ -13,15 +13,25 @@ let anthropic: Anthropic | null = null;
 let openai: OpenAI | null = null;
 
 if (process.env.ANTHROPIC_API_KEY) {
-  anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+  try {
+    anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+    console.log('✅ Anthropic client initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize Anthropic client:', error);
+  }
 }
 
 if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    console.log('✅ OpenAI client initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize OpenAI client:', error);
+  }
 }
 
 interface AuthenticatedSocket extends WebSocket {
@@ -94,58 +104,50 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
   ws.userId = userId;
   ws.email = email;
 
-  console.log(`========== WEBSOCKET CONNECTED ==========`);
-  console.log(`User ID: ${userId}`);
-  console.log(`Email: ${email}`);
-  console.log(`========================================`);
+  // Send connection confirmation
+  ws.send(JSON.stringify({
+    type: "connected",
+    message: "WebSocket connection established",
+    userId: userId,
+  }));
 
   ws.on("message", async (data: Buffer) => {
-    console.log(`========== WS MESSAGE RECEIVED ==========`);
-    console.log(`[WebSocket] User: ${email}`);
-    console.log(`[WebSocket] Raw data length: ${data.length} bytes`);
-    console.log(`[WebSocket] Raw data preview: ${data.toString().substring(0, 500)}`);
-    
     try {
       const message = JSON.parse(data.toString());
-      console.log('[WebSocket] Parsed message:', JSON.stringify(message, null, 2));
-      console.log('[WebSocket] Message type:', message.type);
       
       if (message.type === "chat") {
-        console.log('[WebSocket] ✅ Message type is "chat" - routing to handleChatMessage');
         await handleChatMessage(ws, message);
-        console.log('[WebSocket] ✅ handleChatMessage completed');
-      } else {
-        console.log('[WebSocket] ❌ Unknown message type:', message.type);
       }
     } catch (error) {
-      console.error("========== WEBSOCKET ERROR ==========");
-      console.error("Error:", error);
-      console.error("====================================");
+      console.error("WebSocket message error:", error);
       ws.send(JSON.stringify({
         type: "error",
         message: "Failed to process message",
       }));
     }
-    
-    console.log(`========== WS MESSAGE HANDLED ==========`);
+  });
+
+  // Keep connection alive
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === 1) {
+      ws.ping();
+    }
+  }, 30000);
+
+  ws.on("error", (error) => {
+    console.error('WebSocket error:', error);
+    clearInterval(pingInterval);
   });
 
   ws.on("close", () => {
-    console.log(`========== WEBSOCKET CLOSED ==========`);
-    console.log(`User: ${email}`);
-    console.log(`====================================`);
+    clearInterval(pingInterval);
   });
 }
 
 async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
-  console.log('[handleChatMessage] Called with conversationId:', message.conversationId);
-  console.log('[handleChatMessage] User ID:', ws.userId);
-  console.log('[handleChatMessage] Message:', message.message?.substring(0, 50));
-  
   let { conversationId, message: userMessage, model, mode, imageData } = message;
 
   if (!ws.userId) {
-    console.error('[handleChatMessage] No userId on socket!');
     ws.send(JSON.stringify({
       type: "error",
       message: "Unauthorized",
@@ -153,14 +155,13 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     return;
   }
 
-  // ✅ TIER ENFORCEMENT - Check message limits before processing
+  // Check message limits
   let shouldIncrementUsage = false;
   try {
     const { checkMessageLimit } = await import('./tier-limits');
     const limitCheck = await checkMessageLimit(ws.userId);
     
     if (!limitCheck.allowed) {
-      console.log(`[Tier Limit] User ${ws.userId} reached limit. Tier: ${limitCheck.tier}, Used: ${limitCheck.limit - limitCheck.remaining}/${limitCheck.limit}`);
       ws.send(JSON.stringify({
         type: "error",
         message: `Message limit reached! You've used all ${limitCheck.limit} messages this month. Upgrade to send more messages.`,
@@ -172,11 +173,10 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
     
-    console.log(`[Tier Limit] User ${ws.userId} allowed. Tier: ${limitCheck.tier}, Remaining: ${limitCheck.remaining}`);
-    shouldIncrementUsage = true; // Mark that we should increment after user message is saved
+    shouldIncrementUsage = true;
   } catch (error) {
-    console.error('[Tier Limit] Error checking limit:', error);
-    // Continue anyway - don't block users if tier check fails
+    console.error('Error checking tier limit:', error);
+    // Continue anyway
   }
 
   try {
@@ -184,20 +184,19 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     if (!conversationId) {
       const conversation = await storage.createConversation({
         userId: ws.userId,
-        title: userMessage.substring(0, 100), // Use first 100 chars as title
+        title: userMessage.substring(0, 100),
         model: model || 'gpt-4o-mini',
         mode: mode || 'chat',
       });
       conversationId = conversation.id;
       
-      // Send the new conversation ID back to the client
       ws.send(JSON.stringify({
         type: "conversationCreated",
         conversationId,
       }));
     }
 
-    // Save user message with attachments if present
+    // Save user message
     const messageData: any = {
       conversationId,
       role: "user",
@@ -214,14 +213,13 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
     await storage.createMessage(messageData);
     
-    // ✅ INCREMENT MESSAGE COUNT - Track usage for tier limits
+    // Increment message count
     if (shouldIncrementUsage && ws.userId) {
       try {
         const { incrementMessageCount } = await import('./tier-limits');
         await incrementMessageCount(ws.userId);
-        console.log(`[Tier Limit] Incremented message count for user ${ws.userId}`);
       } catch (error) {
-        console.error('[Tier Limit] Failed to increment message count:', error);
+        console.error('Failed to increment message count:', error);
       }
     }
 
@@ -287,9 +285,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
     
-    // Continue with legacy chat handling...
-    // Check if AI clients are available
-    console.log('AI Clients Status - Anthropic:', !!anthropic, 'OpenAI:', !!openai);
+    // Continue with legacy chat handling
     if (!anthropic && !openai) {
       ws.send(JSON.stringify({
         type: "error",
@@ -298,17 +294,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
 
-    // Re-use conversation history from above
     let fullResponse = "";
-
-    // Stream response based on model
-    console.log('Processing chat with model:', model);
-    
-    // Default to Claude if no model specified
-    if (!model || model === 'undefined' || model === 'null') {
-      model = 'claude-sonnet-4-5';
-      console.log('[Chat] No model specified, defaulting to:', model);
-    }
     
     // ✅ GROK MODEL SUPPORT
     if (model.includes("grok") || model.includes("xai")) {
@@ -322,7 +308,6 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         return;
       }
 
-      console.log('Using Grok to generate response...');
       try {
         fullResponse = await grok.streamChat(conversationHistoryWithSystem, ws, {
           model: 'grok-2-1212',
@@ -339,10 +324,8 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
 
         ws.send(JSON.stringify({ type: "done" }));
         
-        // Update conversation memory
         await updateConversationMemory(conversationId, messages, fullResponse);
       } catch (error: any) {
-        console.error('Grok error:', error);
         ws.send(JSON.stringify({
           type: "error",
           message: error.message || "Grok API error",
@@ -360,18 +343,24 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         return;
       }
 
-      console.log('Using Anthropic to generate response...');
-      console.log('Model:', model, 'Messages:', conversationHistoryWithoutSystem.length);
+      // Map UI model names to Anthropic API model names
+      let anthropicModel = "claude-sonnet-4-20250514"; // Default to Sonnet 4
+      if (model.includes("opus")) {
+        anthropicModel = "claude-opus-4-20250514";
+      } else if (model.includes("sonnet-4-5")) {
+        anthropicModel = "claude-sonnet-4-20250514";
+      } else if (model.includes("sonnet")) {
+        anthropicModel = "claude-3-5-sonnet-20241022";
+      }
+      
       try {
         const stream = await anthropic.messages.stream({
-          model: model === "claude-opus-4-1" ? "claude-opus-4-1-20250805" : "claude-sonnet-4-5-20250929",
+          model: anthropicModel,
           max_tokens: 4096,
           system: systemPrompt,
           messages: conversationHistoryWithoutSystem,
         });
 
-        console.log('Anthropic stream created, listening for chunks...');
-        let chunkCount = 0;
         for await (const chunk of stream) {
           if (
             chunk.type === "content_block_delta" &&
@@ -379,20 +368,18 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
           ) {
             const text = chunk.delta.text;
             fullResponse += text;
-            chunkCount++;
-            if (chunkCount === 1) {
-              console.log('First chunk received:', text.substring(0, 50));
-            }
             ws.send(JSON.stringify({
               type: "chunk",
               content: text,
             }));
           }
         }
-        console.log('Anthropic response complete. Chunks sent:', chunkCount, 'Total length:', fullResponse.length);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Anthropic API error:', error);
-        ws.send(JSON.stringify({ type: "error", message: "AI service error: " + error.message }));
+        ws.send(JSON.stringify({ 
+          type: "error", 
+          message: "AI service error: " + (error?.message || String(error))
+        }));
         return;
       }
     } else {
@@ -404,60 +391,65 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
         return;
       }
 
-      // OpenAI streaming
-      const stream = await openai.chat.completions.create({
-        model: model === "gpt-5" ? "gpt-4-turbo-preview" : "gpt-4-turbo-preview",
-        messages: conversationHistoryWithSystem,
-        stream: true,
-      });
+      // Map UI model names to OpenAI API model names
+      let openaiModel = "gpt-4o-mini"; // Default
+      if (model.includes("gpt-5")) {
+        openaiModel = "gpt-4o"; // Use GPT-4o as fallback for GPT-5
+      } else if (model.includes("gpt-4o")) {
+        openaiModel = "gpt-4o-mini";
+      } else if (model.includes("gpt-4")) {
+        openaiModel = "gpt-4-turbo-preview";
+      }
+      
+      try {
+        // OpenAI streaming
+        const stream = await openai.chat.completions.create({
+          model: openaiModel,
+          messages: conversationHistoryWithSystem,
+          stream: true,
+        });
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          fullResponse += content;
-          ws.send(JSON.stringify({
-            type: "chunk",
-            content,
-          }));
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            fullResponse += content;
+            ws.send(JSON.stringify({
+              type: "chunk",
+              content,
+            }));
+          }
         }
+      } catch (error: any) {
+        console.error('OpenAI API error:', error);
+        ws.send(JSON.stringify({ 
+          type: "error", 
+          message: "OpenAI service error: " + (error?.message || "Unknown error")
+        }));
+        return;
       }
     }
 
     // Save assistant message
-    console.log('Saving assistant message, length:', fullResponse.length);
     if (fullResponse.length > 0) {
-      try {
-        const savedMessage = await storage.createMessage({
-          conversationId,
-          role: "assistant",
-          content: fullResponse,
-          model,
-        });
-        console.log('Assistant message saved successfully:', {
-          messageId: savedMessage.id,
-          conversationId: savedMessage.conversationId,
-          contentLength: savedMessage.content.length
-        });
-      } catch (error) {
-        console.error('Failed to save assistant message:', error);
-      }
-    } else {
-      console.error('WARNING: Empty AI response!');
+      await storage.createMessage({
+        conversationId,
+        role: "assistant",
+        content: fullResponse,
+        model,
+      });
     }
 
-    // Send done signal
-    console.log('Sending done signal');
-    ws.send(JSON.stringify({
-      type: "done",
-    }));
+    ws.send(JSON.stringify({ type: "done" }));
   } catch (error) {
     console.error("Chat error:", error);
+    
     ws.send(JSON.stringify({
       type: "error",
       message: error instanceof Error ? error.message : "Failed to generate response",
     }));
   }
 }
+
 
 // WEB SEARCH MODE - Powered by Perplexity with citations
 async function handleSearchMode(
