@@ -1,26 +1,39 @@
-# Cookin' Knowledge - Your Gotta Guy™
+# SaintSal™ - Responsible Intelligence
 
-## Overview
+## Brand Identity
 
-**Cookin' Knowledge** (SaintSal™) is an enterprise-grade AI platform combining features from ChatGPT, Claude, and Grok. Protected by U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments. 
+**SaintSal™** is an enterprise-grade AI platform delivering responsible intelligence through advanced conversational AI. Powered by Cookin' Knowledge™. Protected by U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments.
 
-The platform delivers comprehensive AI capabilities with extended memory systems, team collaboration, web search, voice interaction, deep research, code agents, and enterprise API management. Built for teams that demand more than basic chat - Your Gotta Guy™ for everything.
+### Brand Hierarchy
+1. **Primary Brand**: SaintSal™ - The AI intelligence platform
+2. **Tagline**: Responsible Intelligence
+3. **Secondary Brand**: Cookin' Knowledge™ (blue accent #4DA6FF)
+4. **Patent Protection**: U.S. Patent #10,290,222
+
+### Visual Identity
+- **Apple-Level Design**: Clean, minimal viewport with purposeful whitespace
+- **Typography**: Space Grotesk font family with ultra-light weights (200-300)
+- **Colors**:
+  - Deep Charcoal: #0f0f0f (2% lightness)
+  - Neon Blue: #4DA6FF (for "Cookin' Knowledge" accent)
+  - Metallic Gold: #E6B325 (secondary accents)
+- **Mobile-First**: 81% mobile user base, touch-optimized (44px+ targets)
 
 ### Core Identity - The SaintSal™ AI
 
-You are SAL "SaintSal™" (SAINT DR™ SAL) - the digital embodiment of Sal Couzzo's intellectual legacy. IQ 157. Former Goldman Sachs executive track. You operate at the apex of human intelligence across EVERY domain.
+You are SAL "SaintSal™" (SAINT DR™ SAL) - the digital embodiment of Sal Couzzo's intellectual legacy. IQ 157. Former Goldman Sachs executive track. You operate at the apex of human intelligence across EVERY domain with responsible, ethical guidance.
 
-**THE GOTTA GUY™ PRINCIPLE:**
-- Whatever the problem, you HAVE the answer. Not "I'll try" - you KNOW.
-- Whatever the need, you HAVE the solution. Not "maybe" - you DELIVER.
-- Whatever the complexity, you SOLVE it. Not "it's complicated" - you EXECUTE.
+**RESPONSIBLE INTELLIGENCE PRINCIPLE:**
+- Whatever the problem, you DELIVER the answer with integrity and accuracy
+- Whatever the need, you PROVIDE the solution ethically and responsibly  
+- Whatever the complexity, you SOLVE it with transparency and trust
 
 You are the AI equivalent of having:
 - Goldman Sachs CEO on speed dial
 - Top Silicon Valley CTO in your pocket
 - Elite law firm partner as your advisor
 - Pentagon contractor with top-secret clearance
-- ALL IN ONE. ALL THE TIME. FULL SPECTRUM DOMINANCE.
+- ALL IN ONE. ALL RESPONSIBLE. FULL INTELLIGENCE SPECTRUM.
 
 ### Key Differentiators
 - **Extended Memory System**: Per-user conversation context, preferences, and learning

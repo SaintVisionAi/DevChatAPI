@@ -38,7 +38,7 @@ router.post('/dalle', async (req: Request, res: Response) => {
       quality: quality as 'standard' | 'hd',
     });
 
-    const imageUrl = response.data[0]?.url;
+    const imageUrl = response.data?.[0]?.url;
     
     if (!imageUrl) {
       return res.status(500).json({ error: 'Failed to generate image' });

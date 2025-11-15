@@ -38,20 +38,17 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
 
     setIsGenerating(true);
     try {
-      const response = await apiRequest<{
-        success: boolean;
-        imageUrl: string;
-        prompt: string;
-        model: string;
-      }>("/api/images/dalle", {
-        method: "POST",
-        body: JSON.stringify({ prompt, size, quality }),
-        headers: { "Content-Type": "application/json" },
+      const response = await apiRequest("POST", "/api/images/dalle", {
+        prompt,
+        size,
+        quality,
       });
 
-      if (response.success && response.imageUrl) {
-        setGeneratedImage(response.imageUrl);
-        onImageGenerated?.(response.imageUrl);
+      const data = await response.json();
+
+      if (data.success && data.imageUrl) {
+        setGeneratedImage(data.imageUrl);
+        onImageGenerated?.(data.imageUrl);
         
         toast({
           title: "Image generated!",
