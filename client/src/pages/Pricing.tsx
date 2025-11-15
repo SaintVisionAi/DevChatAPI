@@ -39,7 +39,11 @@ export default function Pricing() {
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                 <span className="text-primary font-bold text-base sm:text-lg">S</span>
               </div>
-              <span className="font-semibold text-base sm:text-lg">SaintSal</span>
+              <span className="font-semibold text-base sm:text-lg">
+                <span className="text-foreground">Saint</span>
+                <span className="text-accent">Sal</span>
+                <span className="text-foreground text-[10px] align-top">™</span>
+              </span>
             </div>
             
             {/* Desktop Navigation */}
@@ -121,7 +125,7 @@ export default function Pricing() {
             Choose Your Intelligence Level
           </h1>
           <p className="text-xl text-muted-foreground mb-4">
-            Free to start • $20 for unlimited • $97 for pro power • $297 for enterprise teams
+            Free to start • $20 for unlimited • $97 for pro power • Custom pricing for enterprise teams
           </p>
         </div>
       </section>
@@ -136,11 +140,11 @@ export default function Pricing() {
                 <div className="p-2 rounded-lg bg-background border border-border">
                   <Zap className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-bold">Free</h3>
+                <h3 className="text-xl font-bold" data-testid="text-tier-free">Free</h3>
               </div>
               <div className="mb-4">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">$0</span>
+                  <span className="text-4xl font-bold" data-testid="text-price-free">$0</span>
                   <span className="text-muted-foreground">/forever</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -177,13 +181,13 @@ export default function Pricing() {
               </Badge>
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-background border border-border">
-                  <Zap className="h-5 w-5 text-[#4DA6FF]" />
+                  <Zap className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold">Unlimited Starter</h3>
+                <h3 className="text-xl font-bold" data-testid="text-tier-starter">Unlimited Starter</h3>
               </div>
               <div className="mb-4">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">$20</span>
+                  <span className="text-4xl font-bold" data-testid="text-price-starter">$20</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -225,13 +229,13 @@ export default function Pricing() {
             <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-pro">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-background border border-border">
-                  <Shield className="h-5 w-5 text-[#E6B325]" />
+                  <Shield className="h-5 w-5 text-accent" />
                 </div>
-                <h3 className="text-xl font-bold">Pro</h3>
+                <h3 className="text-xl font-bold" data-testid="text-tier-pro">Pro</h3>
               </div>
               <div className="mb-4">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">$97</span>
+                  <span className="text-4xl font-bold" data-testid="text-price-pro">$97</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -269,21 +273,20 @@ export default function Pricing() {
               </Button>
             </Card>
 
-            {/* Enterprise - $297 */}
+            {/* Enterprise - Custom Pricing */}
             <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-enterprise">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-background border border-border">
-                  <Users className="h-5 w-5 text-[#E6B325]" />
+                  <Users className="h-5 w-5 text-accent" />
                 </div>
-                <h3 className="text-xl font-bold">Enterprise</h3>
+                <h3 className="text-xl font-bold" data-testid="text-tier-enterprise">Enterprise</h3>
               </div>
               <div className="mb-4">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">$297</span>
-                  <span className="text-muted-foreground">/month</span>
+                  <span className="text-4xl font-bold" data-testid="text-price-enterprise">Custom</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Complete solution for teams
+                  Tailored pricing for your organization
                 </p>
               </div>
               <ul className="space-y-3 mb-6 flex-1">
@@ -316,8 +319,8 @@ export default function Pricing() {
                   <span>99.9% uptime SLA</span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full" data-testid="button-upgrade-enterprise">
-                Upgrade to Enterprise
+              <Button variant="outline" className="w-full" asChild data-testid="button-contact-sales">
+                <a href="mailto:sales@saintsal.ai?subject=Enterprise%20Plan%20Inquiry">Contact Sales</a>
               </Button>
             </Card>
           </div>

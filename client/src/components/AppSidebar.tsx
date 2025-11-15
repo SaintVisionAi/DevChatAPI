@@ -111,8 +111,12 @@ export function AppSidebar() {
               <span className="text-primary-foreground font-bold text-sm">SS</span>
             </div>
             <div>
-              <div className="font-bold text-sm text-primary">SaintSal</div>
-              <div className="text-xs text-accent">Responsible Intelligence</div>
+              <div className="font-bold text-sm">
+                <span className="text-foreground">Saint</span>
+                <span className="text-accent">Sal</span>
+                <span className="text-foreground text-[10px] align-top">™</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Responsible Intelligence</div>
             </div>
           </div>
         </Link>

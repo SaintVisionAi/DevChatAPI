@@ -60,7 +60,11 @@ export default function Landing() {
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
               <span className="text-primary font-bold text-base sm:text-lg">S</span>
             </div>
-            <span className="font-semibold text-base sm:text-lg">SaintSal</span>
+            <span className="font-semibold text-base sm:text-lg">
+              <span className="text-foreground">Saint</span>
+              <span className="text-accent">Sal</span>
+              <span className="text-foreground text-[10px] align-top">™</span>
+            </span>
           </div>
           
           {/* Desktop Navigation */}
