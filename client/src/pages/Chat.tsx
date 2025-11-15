@@ -44,6 +44,7 @@ import type { User, Conversation, Message } from "@shared/schema";
 import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
+import { FileUpload } from "@/components/FileUpload";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -76,6 +77,7 @@ export default function ChatFixed() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const {
     speak,
