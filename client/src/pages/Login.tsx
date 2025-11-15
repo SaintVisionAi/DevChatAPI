@@ -30,7 +30,7 @@ export default function Login() {
           title: "Success",
           description: "Logged in successfully",
         });
-        setLocation("/dashboard");
+        window.location.href = "/chat";
       } else {
         const data = await response.json();
         toast({
