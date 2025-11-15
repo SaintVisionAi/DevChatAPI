@@ -35,6 +35,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User>;
 
   // Conversations
   createConversation(data: InsertConversation): Promise<Conversation>;
@@ -79,21 +80,39 @@ export interface IStorage {
 export class DbStorage implements IStorage {
   // Users
   async upsertUser(user: UpsertUser): Promise<User> {
-    const [result] = await db
-      .insert(users)
-      .values(user)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profileImageUrl: user.profileImageUrl,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return result;
+    // ✅ CORRECT FIX: UPSERT on primary key (id/sub) only
+    // NEVER change the primary key - it breaks foreign key relationships
+    // The OIDC `sub` (user.id) is the stable identifier
+    // If email already exists with different sub, PostgreSQL will throw unique constraint error
+    try {
+      const [result] = await db
+        .insert(users)
+        .values(user)
+        .onConflictDoUpdate({
+          target: users.id, // Conflict on sub (primary key)
+          set: {
+            email: user.email, // Update email if user logs in again
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.profileImageUrl,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return result;
+    } catch (error: any) {
+      // If email unique constraint is violated, it means:
+      // - Same email trying to log in with different OIDC sub
+      // - This could be a duplicate account or account takeover attempt
+      if (error.code === '23505' && error.constraint === 'users_email_unique') {
+        console.error(`[upsertUser] Email conflict: ${user.email} already exists with different OIDC sub`);
+        console.error(`[upsertUser] Attempted sub: ${user.id}, Error: ${error.message}`);
+        // Re-throw with clearer message
+        throw new Error(`This email is already associated with another account. Please use a different email or contact support.`);
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async getUserById(id: string): Promise<User | undefined> {
@@ -104,6 +123,19 @@ export class DbStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return user;
+  }
+
+  async updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error('User not found');
+    }
+    return updated;
   }
 
   // Conversations

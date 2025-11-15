@@ -1,5 +1,6 @@
 // Reference: javascript_websocket, javascript_anthropic_ai_integrations, javascript_openai_ai_integrations blueprints
-import WebSocket from "ws";
+// @ts-ignore - ws types are installed but TypeScript can't find them
+import type WebSocket from "ws";
 import type { IncomingMessage } from "http";
 import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
@@ -34,10 +35,10 @@ if (process.env.OPENAI_API_KEY) {
   }
 }
 
-interface AuthenticatedSocket extends WebSocket {
+type AuthenticatedSocket = WebSocket & {
   userId?: string;
   email?: string;
-}
+};
 
 /**
  * Update conversation memory with context, summary, and key topics
@@ -134,7 +135,7 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
     }
   }, 30000);
 
-  ws.on("error", (error) => {
+  ws.on("error", (error: Error) => {
     console.error('WebSocket error:', error);
     clearInterval(pingInterval);
   });
@@ -282,6 +283,11 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
     
     if (mode === 'research') {
       await handleResearchMode(ws, conversationId, userMessage, model);
+      return;
+    }
+    
+    if (mode === 'voice') {
+      await handleVoiceMode(ws, conversationId, userMessage, model);
       return;
     }
     
@@ -489,7 +495,7 @@ async function handleSearchMode(
 
     // Search with Perplexity
     const searchResult = await perplexity.search(perplexityMessages, {
-      model: 'llama-3.1-sonar-large-128k-online',
+      model: 'sonar-pro',
       temperature: 0.2,
       searchRecencyFilter: 'month',
       returnRelatedQuestions: true,
@@ -567,9 +573,10 @@ async function handleCodeMode(
     const files = [];
     
     // Process code request
+    const codeFiles: any[] = [];
     const response = await codeAgent.processCodeRequest(
       userMessage,
-      files,
+      codeFiles,
       ws as any,
       {
         model: model.includes('claude') ? 'claude-sonnet-4-5-20250929' : 'gpt-4o',
@@ -584,7 +591,7 @@ async function handleCodeMode(
       role: "assistant",
       content: response,
       model: model,
-      codeFiles: files,
+      codeFiles: codeFiles,
     });
     
     ws.send(JSON.stringify({ type: "done" }));
@@ -672,7 +679,7 @@ Question: ${userMessage}`;
     const searchResult = await perplexity.search([
       { role: 'user', content: userMessage }
     ], {
-      model: 'llama-3.1-sonar-huge-128k-online',
+      model: 'sonar-reasoning',
       temperature: 0.3,
       searchRecencyFilter: 'month',
     });
@@ -726,10 +733,10 @@ Provide a comprehensive synthesis with:
       role: "assistant",
       content: fullResponse,
       model: model,
-      reasoning: {
+      reasoning: JSON.stringify({
         steps: ["Analysis", "Research", "Synthesis"],
         sources: searchResult.citations,
-      },
+      }),
     });
     
     ws.send(JSON.stringify({ type: "done" }));
@@ -738,6 +745,45 @@ Provide a comprehensive synthesis with:
     ws.send(JSON.stringify({
       type: "error",
       message: "Failed to complete research",
+    }));
+  }
+}
+
+// VOICE MODE - Ultra-realistic voice with ElevenLabs SaintSal Agent
+async function handleVoiceMode(
+  ws: AuthenticatedSocket,
+  conversationId: string,
+  userMessage: string,
+  model: string
+) {
+  try {
+    ws.send(JSON.stringify({
+      type: "status",
+      message: "🎙️ Processing with SaintSal voice...",
+    }));
+
+    const { elevenLabs } = await import("./providers/elevenlabs");
+    
+    if (!elevenLabs.isAvailable()) {
+      ws.send(JSON.stringify({
+        type: "error",
+        message: "ElevenLabs API key required for voice mode. Please add ELEVENLABS_API_KEY to secrets.",
+      }));
+      return;
+    }
+
+    // Stream conversation with ElevenLabs Conversational AI agent
+    // This will handle both text streaming AND voice streaming
+    await elevenLabs.streamConversation(userMessage, ws, {
+      agentId: 'agent_540Nk85Srebarapn6vd3mhBxH7z', // Your SaintSal agent
+    });
+
+    ws.send(JSON.stringify({ type: "done" }));
+  } catch (error) {
+    console.error('Voice mode error:', error);
+    ws.send(JSON.stringify({
+      type: "error",
+      message: error instanceof Error ? error.message : "Voice processing failed",
     }));
   }
 }

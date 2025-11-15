@@ -17,6 +17,8 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Chat from "@/pages/Chat";
+import VoiceMode from "@/pages/VoiceMode";
+import ImageGenPage from "@/pages/ImageGenPage";
 import Playground from "@/pages/Playground";
 import Settings from "@/pages/Settings";
 import Pricing from "@/pages/Pricing";
@@ -63,8 +65,10 @@ function Router() {
 
   return (
     <Switch>
-      {/* Chat route - Full screen without sidebar/header */}
+      {/* Full-screen pages without sidebar */}
       <Route path="/chat" component={Chat} />
+      <Route path="/voice" component={VoiceMode} />
+      <Route path="/images" component={ImageGenPage} />
       
       {/* All other routes with sidebar layout */}
       <Route>
@@ -76,7 +80,7 @@ function Router() {
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <ThemeToggle />
               </header>
-              <main className="flex-1 overflow-hidden">
+              <main className="flex-1 overflow-y-auto">
                 <Switch>
                   <Route path="/" component={Dashboard} />
                   <Route path="/dashboard" component={Dashboard} />

@@ -13,18 +13,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Send, 
-  Plus, 
+import {
+  Send,
+  Plus,
   Loader2,
-  Paperclip, 
-  Code2, 
-  Image as ImageIcon, 
-  Search, 
-  Database, 
-  Calculator, 
-  Sparkles, 
-  Volume2, 
+  Paperclip,
+  Code2,
+  Image as ImageIcon,
+  Search,
+  Database,
+  Calculator,
+  Sparkles,
+  Volume2,
   VolumeX,
   MessageSquare,
   PanelLeftClose,
@@ -35,7 +35,8 @@ import {
   Trash2,
   MoreVertical,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  Wand2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,35 +45,52 @@ import type { User, Conversation, Message } from "@shared/schema";
 import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
+import { FileUpload } from "@/components/FileUpload";
+import { ImageGenerator } from "@/components/ImageGenerator";
 import { LiveVoiceChat } from "@/components/LiveVoiceChat";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
-type ChatMode = 'chat' | 'search' | 'research' | 'code' | 'voice';
+type ChatMode = "chat" | "search" | "research" | "code" | "voice";
 
 export default function ChatFixed() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth() as {
+  const {
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+  } = useAuth() as {
     user: User | undefined;
     isLoading: boolean;
     isAuthenticated: boolean;
   };
 
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | null
+  >(null);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-5");
-  const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
+  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [retryCount, setRetryCount] = useState(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<ChatMode>("chat");
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  const { speak, cancel: cancelSpeech, isSpeaking } = useTextToSpeech({
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showImageGenerator, setShowImageGenerator] = useState(false);
+
+  const {
+    speak,
+    cancel: cancelSpeech,
+    isSpeaking,
+  } = useTextToSpeech({
     rate: 1.1,
     pitch: 1.0,
     volume: 1.0,
@@ -80,6 +98,7 @@ export default function ChatFixed() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -121,7 +140,10 @@ export default function ChatFixed() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete conversation",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete conversation",
         variant: "destructive",
       });
     },
@@ -167,26 +189,35 @@ export default function ChatFixed() {
     scrollToBottom();
   }, [messages, streamingMessage]);
 
-  const handleSendMessage = async (messageOverride?: string) => {
-    const messageText = messageOverride || input;
-    if (!messageText.trim() || isStreaming) return;
+  // Exponential backoff helper
+  const getRetryDelay = (attempt: number) => {
+    // 1s, 2s, 4s, 8s (max 8s)
+    return Math.min(1000 * Math.pow(2, attempt), 8000);
+  };
 
-    setInput("");
+  const connectWebSocket = async (
+    conversationId: string,
+    messageText: string,
+    attempt: number = 0
+  ): Promise<void> => {
+    const MAX_RETRIES = 3;
 
-    let conversationId = selectedConversationId;
-    if (!conversationId) {
-      const newConv = await createConversationMutation.mutateAsync(messageText.slice(0, 50));
-      conversationId = newConv.id;
+    if (attempt > 0) {
+      const delay = getRetryDelay(attempt - 1);
+      setIsReconnecting(true);
+      toast({
+        title: "Reconnecting...",
+        description: `Attempt ${attempt}/${MAX_RETRIES}`,
+      });
+      await new Promise(resolve => setTimeout(resolve, delay));
+      setIsReconnecting(false);
     }
 
-    setIsStreaming(true);
-    setStreamingMessage("");
-
     // Construct WebSocket URL correctly using origin
-    const wsUrl = new URL('/ws', window.location.origin);
-    wsUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    console.log('[Chat] Connecting to WebSocket:', wsUrl.href);
-    
+    const wsUrl = new URL("/ws", window.location.origin);
+    wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    console.log(`[Chat] Connecting to WebSocket (attempt ${attempt}):`, wsUrl.href);
+
     const ws = new WebSocket(wsUrl.href);
     wsRef.current = ws;
 
@@ -196,11 +227,11 @@ export default function ChatFixed() {
 
     let fullMessage = "";
     let messageSent = false;
-    
+
     const sendChatMessage = () => {
       if (messageSent) return;
       messageSent = true;
-      
+
       try {
         const payload = JSON.stringify({
           type: "chat",
@@ -212,36 +243,54 @@ export default function ChatFixed() {
         });
         ws.send(payload);
       } catch (error) {
-        console.error('Failed to send message:', error);
+        console.error("Failed to send message:", error);
         messageSent = false;
       }
-      
+
       setSelectedImage(null);
     };
-    
+
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
-      
+
       if (data.type === "connected") {
         // Connection confirmed, now send the message
         setTimeout(sendChatMessage, 50);
       } else if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
         fullMessage += data.content;
+      } else if (data.type === "audio_chunk") {
+        // Stream audio chunk from ElevenLabs in Voice mode
+        if (data.audio && selectedMode === "voice") {
+          try {
+            // Decode base64 audio and play
+            const audioData = `data:${data.mimeType || 'audio/mpeg'};base64,${data.audio}`;
+            const audio = new Audio(audioData);
+            await audio.play();
+          } catch (error) {
+            console.error("Audio playback error:", error);
+          }
+        }
+      } else if (data.type === "audio_end") {
+        // Voice streaming finished
+        console.log("[Voice] Audio streaming completed");
+      } else if (data.type === "status") {
+        // Show status messages (e.g., "Processing with SaintSal voice...")
+        console.log("[Status]", data.message);
       } else if (data.type === "done") {
         // Auto-speak in voice mode OR if auto-speak is enabled
-        if ((selectedMode === 'voice' || autoSpeak) && fullMessage) {
+        if ((selectedMode === "voice" || autoSpeak) && fullMessage) {
           // Use ElevenLabs TTS for high-quality voice
           try {
-            const response = await fetch('/api/voice/tts', {
-              method: 'POST',
+            const response = await fetch("/api/voice/tts", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
-              credentials: 'include',
+              credentials: "include",
               body: JSON.stringify({ text: fullMessage }),
             });
-            
+
             if (response.ok) {
               const audioBlob = await response.blob();
               const audioUrl = URL.createObjectURL(audioBlob);
@@ -252,12 +301,12 @@ export default function ChatFixed() {
               speak(fullMessage);
             }
           } catch (error) {
-            console.error('TTS error:', error);
+            console.error("TTS error:", error);
             // Fallback to browser TTS
             speak(fullMessage);
           }
         }
-        
+
         setIsStreaming(false);
         setStreamingMessage("");
         queryClient.invalidateQueries({
@@ -265,9 +314,24 @@ export default function ChatFixed() {
         });
         ws.close();
       } else if (data.type === "error") {
+        // Graceful error handling with user-friendly messages
+        let errorMessage = data.message || "Failed to send message";
+        let actionText = "Try again";
+
+        if (errorMessage.includes("Rate limit")) {
+          errorMessage = "AI service is busy. Please try again in a moment.";
+          actionText = "Retry";
+        } else if (errorMessage.includes("Unauthorized")) {
+          errorMessage = "Session expired. Please log in again.";
+          actionText = "Login";
+        } else if (errorMessage.includes("not configured")) {
+          errorMessage = "AI service temporarily unavailable. Contact support if this persists.";
+          actionText = "OK";
+        }
+
         toast({
           title: "Error",
-          description: data.message || "Failed to send message",
+          description: errorMessage,
           variant: "destructive",
         });
         setIsStreaming(false);
@@ -276,15 +340,70 @@ export default function ChatFixed() {
       }
     };
 
-    ws.onerror = () => {
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to chat service",
-        variant: "destructive",
-      });
-      setIsStreaming(false);
-      setStreamingMessage("");
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      
+      // Retry on error if under max retries
+      if (attempt < MAX_RETRIES) {
+        ws.close();
+        connectWebSocket(conversationId, messageText, attempt + 1);
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Unable to connect to AI service after multiple attempts. Please try again later.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        setStreamingMessage("");
+        setRetryCount(0);
+      }
     };
+
+    ws.onclose = (event) => {
+      console.log("WebSocket connection closed", event.code, event.reason);
+      
+      // Normal closure (1000) = success, don't retry
+      if (event.code === 1000 || !isStreaming) {
+        setRetryCount(0); // Reset retry count on successful completion
+        return;
+      }
+      
+      // Unexpected close - retry if under max attempts
+      if (attempt < MAX_RETRIES) {
+        connectWebSocket(conversationId, messageText, attempt + 1);
+      } else {
+        toast({
+          title: "Connection Lost",
+          description: "Connection to AI service was interrupted after multiple retry attempts.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        setStreamingMessage("");
+        setRetryCount(0);
+      }
+    };
+  };
+
+  const handleSendMessage = async (messageOverride?: string) => {
+    const messageText = messageOverride || input;
+    if (!messageText.trim() || isStreaming) return;
+
+    setInput("");
+
+    let conversationId = selectedConversationId;
+    if (!conversationId) {
+      const newConv = await createConversationMutation.mutateAsync(
+        messageText.slice(0, 50),
+      );
+      conversationId = newConv.id;
+    }
+
+    setIsStreaming(true);
+    setStreamingMessage("");
+    setRetryCount(0);
+
+    // Start WebSocket connection with retry logic
+    await connectWebSocket(conversationId, messageText, 0);
   };
 
   const handleStopGeneration = () => {
@@ -313,12 +432,15 @@ export default function ChatFixed() {
   const handleNewChat = () => {
     setSelectedConversationId(null);
     setInput("");
-    setSelectedMode('chat');
+    setSelectedMode("chat");
     setSelectedImage(null);
     setMobileMenuOpen(false);
   };
 
-  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = (
+    conversationId: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this conversation?")) {
       deleteConversationMutation.mutate(conversationId);
@@ -332,7 +454,13 @@ export default function ChatFixed() {
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file || !file.type.startsWith("image/")) return;
+    
+    handleFileUpload(file);
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -343,6 +471,44 @@ export default function ChatFixed() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageGenerated = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setShowImageGenerator(false);
+    toast({
+      title: "Image ready!",
+      description: "Your generated image has been added to the chat",
+    });
+  };
+
+  const handleFileDrop = (files: File[]) => {
+    const file = files[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleFileDrop(files);
   };
 
   if (authLoading) {
@@ -357,27 +523,29 @@ export default function ChatFixed() {
     return null;
   }
 
-  const showEmptyState = !selectedConversationId || !messages || messages.length === 0;
+  const showEmptyState =
+    !selectedConversationId || !messages || messages.length === 0;
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Collapsible Conversations Sidebar */}
-      <div 
+      <div
         className={cn(
           "border-r border-border/50 flex flex-col bg-gradient-to-b from-muted/30 to-muted/10 backdrop-blur-sm transition-all duration-300",
           // Desktop behavior
           "hidden md:flex",
           sidebarCollapsed ? "md:w-16" : "md:w-80",
           // Mobile behavior - overlay
-          mobileMenuOpen && "fixed inset-y-0 left-0 z-50 flex w-80 md:relative shadow-2xl"
+          mobileMenuOpen &&
+            "fixed inset-y-0 left-0 z-50 flex w-80 md:relative shadow-2xl",
         )}
       >
         <div className="p-3 border-b border-border/50 bg-gradient-to-b from-background to-muted/20">
@@ -386,21 +554,32 @@ export default function ChatFixed() {
             {!sidebarCollapsed ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
-                  <span className="text-primary-foreground font-bold text-lg">SS</span>
+                  <span className="text-primary-foreground font-bold text-lg">
+                    SS
+                  </span>
                 </div>
                 <div>
                   <div className="font-bold text-base bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                     SaintSal
                   </div>
-                  <div className="text-xs text-muted-foreground/70">Your Gotta Guy™</div>
+                  <div className="text-xs text-muted-foreground/70">
+                    Responsible Intelligence
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 mx-auto">
-                <span className="text-primary-foreground font-bold text-lg">SS</span>
+                <span className="text-primary-foreground font-bold text-lg">
+                  SS
+                </span>
               </div>
             )}
-            <div className={cn("flex items-center gap-2", sidebarCollapsed && "hidden")}>
+            <div
+              className={cn(
+                "flex items-center gap-2",
+                sidebarCollapsed && "hidden",
+              )}
+            >
               {/* Close button on mobile */}
               <Button
                 variant="ghost"
@@ -422,7 +601,7 @@ export default function ChatFixed() {
               </Button>
             </div>
           </div>
-          
+
           {/* Collapse toggle when collapsed */}
           {sidebarCollapsed && (
             <Button
@@ -435,15 +614,15 @@ export default function ChatFixed() {
               <PanelLeft className="h-4 w-4" />
             </Button>
           )}
-          
+
           {/* Back to Dashboard Button */}
           <Button
-            onClick={() => setLocation('/dashboard')}
+            onClick={() => setLocation("/dashboard")}
             className={cn(
               "w-full shadow-sm hover:shadow-md transition-all duration-200 rounded-xl mb-2",
-              sidebarCollapsed 
-                ? "p-2.5 bg-muted/50 hover:bg-muted" 
-                : "bg-muted/50 hover:bg-muted font-medium"
+              sidebarCollapsed
+                ? "p-2.5 bg-muted/50 hover:bg-muted"
+                : "bg-muted/50 hover:bg-muted font-medium",
             )}
             data-testid="button-back-dashboard"
             variant="ghost"
@@ -451,15 +630,15 @@ export default function ChatFixed() {
             <Home className={cn("h-4 w-4", !sidebarCollapsed && "mr-2")} />
             {!sidebarCollapsed && <span>Dashboard</span>}
           </Button>
-          
+
           {/* New Chat Button */}
           <Button
             onClick={handleNewChat}
             className={cn(
               "w-full shadow-sm hover:shadow-md transition-all duration-200 rounded-xl",
-              sidebarCollapsed 
-                ? "p-2.5 bg-primary/10 hover:bg-primary/20" 
-                : "bg-primary hover:bg-primary/90 font-medium"
+              sidebarCollapsed
+                ? "p-2.5 bg-primary/10 hover:bg-primary/20"
+                : "bg-primary hover:bg-primary/90 font-medium",
             )}
             data-testid="button-new-chat"
           >
@@ -480,7 +659,7 @@ export default function ChatFixed() {
               key={conv.id}
               className={cn(
                 "relative group transition-all duration-200",
-                sidebarCollapsed ? "mx-auto" : ""
+                sidebarCollapsed ? "mx-auto" : "",
               )}
             >
               <button
@@ -493,31 +672,39 @@ export default function ChatFixed() {
                   sidebarCollapsed ? "p-2.5 justify-center" : "p-3 pr-11 gap-3",
                   selectedConversationId === conv.id
                     ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/20"
-                    : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                    : "hover:bg-muted/50 text-muted-foreground hover:text-foreground",
                 )}
                 data-testid={`button-conversation-${conv.id}`}
                 title={sidebarCollapsed ? conv.title : undefined}
               >
                 {sidebarCollapsed ? (
-                  <MessageSquare className={cn(
-                    "h-4 w-4 shrink-0 transition-colors",
-                    selectedConversationId === conv.id ? "text-primary" : ""
-                  )} />
+                  <MessageSquare
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      selectedConversationId === conv.id ? "text-primary" : "",
+                    )}
+                  />
                 ) : (
                   <>
-                    <div className={cn(
-                      "p-1.5 rounded-lg transition-colors shrink-0",
-                      selectedConversationId === conv.id
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground"
-                    )}>
+                    <div
+                      className={cn(
+                        "p-1.5 rounded-lg transition-colors shrink-0",
+                        selectedConversationId === conv.id
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground",
+                      )}
+                    >
                       <MessageSquare className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className={cn(
-                        "font-medium truncate text-sm transition-colors",
-                        selectedConversationId === conv.id ? "text-foreground" : ""
-                      )}>
+                      <div
+                        className={cn(
+                          "font-medium truncate text-sm transition-colors",
+                          selectedConversationId === conv.id
+                            ? "text-foreground"
+                            : "",
+                        )}
+                      >
                         {conv.title}
                       </div>
                       <div className="text-xs text-muted-foreground/70 mt-0.5 truncate">
@@ -543,39 +730,59 @@ export default function ChatFixed() {
               )}
             </div>
           ))}
-          {(!conversations || conversations.length === 0) && !sidebarCollapsed && (
-            <div className="flex flex-col items-center justify-center py-12 px-4">
-              <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-                <MessageSquare className="h-5 w-5 text-muted-foreground/50" />
+          {(!conversations || conversations.length === 0) &&
+            !sidebarCollapsed && (
+              <div className="flex flex-col items-center justify-center py-12 px-4">
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm text-muted-foreground/70 text-center">
+                  No conversations yet
+                </p>
+                <p className="text-xs text-muted-foreground/50 text-center mt-1">
+                  Start a new chat to begin
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground/70 text-center">
-                No conversations yet
-              </p>
-              <p className="text-xs text-muted-foreground/50 text-center mt-1">
-                Start a new chat to begin
-              </p>
-            </div>
-          )}
+            )}
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div 
+        className="flex-1 flex flex-col min-w-0 overflow-hidden relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        ref={chatContainerRef}
+      >
+        {/* Drag Over Overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm border-4 border-dashed border-primary flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
+                <ImageIcon className="w-10 h-10 text-primary" />
+              </div>
+              <div className="text-xl font-bold text-primary">Drop your image here</div>
+              <div className="text-sm text-muted-foreground">Upload images to chat with vision AI</div>
+            </div>
+          </div>
+        )}
+
         {/* Header - Always Visible */}
-        
+
         <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-border shrink-0 bg-background/95 backdrop-blur-sm z-10">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             {/* Back to Dashboard button - Desktop */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setLocation('/dashboard')}
+              onClick={() => setLocation("/dashboard")}
               className="hidden md:flex shrink-0"
               title="Back to Dashboard"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            
+
             {/* Mobile menu button */}
             <Button
               variant="ghost"
@@ -585,14 +792,16 @@ export default function ChatFixed() {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            
+
             {/* Chat Title - Shows conversation name or "New Chat" */}
             <h2 className="font-semibold text-sm sm:text-lg truncate flex-1">
-              {selectedConversationId && conversations?.find(c => c.id === selectedConversationId)?.title
-                ? conversations.find(c => c.id === selectedConversationId)?.title
+              {selectedConversationId &&
+              conversations?.find((c) => c.id === selectedConversationId)?.title
+                ? conversations.find((c) => c.id === selectedConversationId)
+                    ?.title
                 : "New Chat"}
             </h2>
-            
+
             {/* New Chat Button - Always visible on mobile */}
             <Button
               variant="ghost"
@@ -604,7 +813,7 @@ export default function ChatFixed() {
               <Plus className="h-5 w-5" />
             </Button>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Model Selector - Hidden on mobile */}
             <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -621,13 +830,81 @@ export default function ChatFixed() {
               variant="ghost"
               size="icon"
               onClick={() => setAutoSpeak(!autoSpeak)}
-              className={cn("shrink-0", autoSpeak ? "text-primary" : "text-muted-foreground")}
+              className={cn(
+                "shrink-0",
+                autoSpeak ? "text-primary" : "text-muted-foreground",
+              )}
               data-testid="button-auto-speak"
             >
-              {autoSpeak ? <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />}
+              {autoSpeak ? (
+                <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              ) : (
+                <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />
+              )}
             </Button>
           </div>
         </header>
+
+        {/* Quick Mode Switcher */}
+        <div className="border-b border-border bg-background/80 backdrop-blur-sm px-3 sm:px-6 py-2">
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+            <Link href="/chat">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2 bg-primary/10 text-primary"
+                data-testid="link-chat-mode"
+              >
+                <MessageSquare className="h-4 w-4 mr-1.5" />
+                Chat
+              </Button>
+            </Link>
+            <Link href="/voice">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2"
+                data-testid="link-voice-mode"
+              >
+                <Mic className="h-4 w-4 mr-1.5" />
+                Voice
+              </Button>
+            </Link>
+            <Link href="/images">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2"
+                data-testid="link-images-mode"
+              >
+                <Wand2 className="h-4 w-4 mr-1.5" />
+                Images
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="shrink-0 opacity-50"
+              data-testid="button-search-mode-soon"
+            >
+              <Search className="h-4 w-4 mr-1.5" />
+              Search
+              <Badge variant="outline" className="ml-1.5 text-xs">Soon</Badge>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="shrink-0 opacity-50"
+              data-testid="button-code-mode-soon"
+            >
+              <Code2 className="h-4 w-4 mr-1.5" />
+              Code
+              <Badge variant="outline" className="ml-1.5 text-xs">Soon</Badge>
+            </Button>
+          </div>
+        </div>
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -657,14 +934,18 @@ export default function ChatFixed() {
                 </div>
 
                 <div className="space-y-2">
-                  <h1 className="text-xl sm:text-3xl font-bold" data-testid="text-welcome-title">
+                  <h1
+                    className="text-xl sm:text-3xl font-bold"
+                    data-testid="text-welcome-title"
+                  >
                     Cookin' Knowledge
                   </h1>
-                  <p className="text-sm sm:text-base text-accent font-medium">
-                    Your Gotta Guy™
+                  <p className="text-sm sm:text-base text-primary font-medium">
+                    Powered by SaintSal™
                   </p>
                   <p className="text-xs sm:text-sm text-muted-foreground px-4">
-                    AI Chat • Web Search • Voice • Code Agent • Deep Research • Everything
+                    AI Chat • Web Search • Voice • Code Agent • Deep Research •
+                    Everything
                   </p>
                 </div>
 
@@ -673,7 +954,9 @@ export default function ChatFixed() {
                     variant="outline"
                     className="rounded-full text-xs sm:text-sm"
                     size="sm"
-                    onClick={() => handleSuggestion("Generate code for a React component")}
+                    onClick={() =>
+                      handleSuggestion("Generate code for a React component")
+                    }
                     data-testid="button-suggestion-code"
                   >
                     <Code2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -703,12 +986,15 @@ export default function ChatFixed() {
           ) : (
             /* Messages */
             <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8">
-              {messages?.map((message) => (
-                <div key={message.id} className="group">
+              {messages?.map((message, index) => (
+                <div key={message.id} className="group animate-slide-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
                   {message.role === "user" ? (
                     <div className="flex gap-3 sm:gap-4 items-start">
                       <Avatar className="h-8 w-8 shrink-0 ring-2 ring-background">
-                        <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || user?.email || "User"} />
+                        <AvatarImage
+                          src={user?.profileImageUrl || undefined}
+                          alt={user?.firstName || user?.email || "User"}
+                        />
                         <AvatarFallback className="bg-primary/10 text-primary font-medium">
                           {user?.firstName?.[0] || user?.email?.[0] || "U"}
                         </AvatarFallback>
@@ -741,7 +1027,10 @@ export default function ChatFixed() {
                             {format(new Date(message.createdAt!), "h:mm a")}
                           </span>
                           {message.model && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0">
+                            <Badge
+                              variant="outline"
+                              className="text-xs px-1.5 py-0"
+                            >
                               {message.model}
                             </Badge>
                           )}
@@ -751,29 +1040,41 @@ export default function ChatFixed() {
                             {String(message.content)}
                           </p>
                           {/* Display citations if present */}
-                          {message.searchResults && Array.isArray(message.searchResults) && message.searchResults.length > 0 && (
-                            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border not-prose">
-                              <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
-                              <div className="space-y-1.5">
-                                {(message.searchResults as any[]).map((citation: any, idx: number) => (
-                                  <div key={idx} className="flex items-start gap-2 text-xs">
-                                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5 shrink-0">
-                                      {idx + 1}
-                                    </Badge>
-                                    <a 
-                                      href={String(citation)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-primary hover:underline break-all leading-relaxed"
-                                      data-testid={`citation-${idx}`}
-                                    >
-                                      {String(citation)}
-                                    </a>
-                                  </div>
-                                ))}
+                          {message.searchResults &&
+                            Array.isArray(message.searchResults) &&
+                            message.searchResults.length > 0 && (
+                              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border not-prose">
+                                <div className="text-xs font-medium text-muted-foreground mb-2">
+                                  Sources:
+                                </div>
+                                <div className="space-y-1.5">
+                                  {(message.searchResults as unknown as string[]).map(
+                                    (citation: string, idx: number) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-start gap-2 text-xs"
+                                      >
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs px-1.5 py-0.5 shrink-0"
+                                        >
+                                          {idx + 1}
+                                        </Badge>
+                                        <a
+                                          href={citation}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-primary hover:underline break-all leading-relaxed"
+                                          data-testid={`citation-${idx}`}
+                                        >
+                                          {citation}
+                                        </a>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </div>
                       </div>
                     </div>
@@ -792,7 +1093,10 @@ export default function ChatFixed() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium">SaintSal</span>
-                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                        <Badge
+                          variant="outline"
+                          className="text-xs px-1.5 py-0"
+                        >
                           <span className="inline-flex items-center gap-1">
                             <span className="animate-pulse">●</span> Typing
                           </span>
@@ -830,27 +1134,28 @@ export default function ChatFixed() {
 
         {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
         <div className="border-t border-border bg-background backdrop-blur-sm shrink-0 safe-bottom">
-          {/* Mode Selector - Always visible */}
-          <div className="border-b border-border bg-muted/5">
-            <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1 sm:py-2">
-              <ModeSelector
-                currentMode={selectedMode}
-                onModeChange={setSelectedMode}
-                disabled={isStreaming}
-                className="scale-75 sm:scale-100 origin-center"
-              />
+          {/* Mode Selector - Hidden on empty state, shown when chatting */}
+          {!showEmptyState && (
+            <div className="border-b border-border bg-muted/5">
+              <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1 sm:py-2">
+                <ModeSelector
+                  currentMode={selectedMode}
+                  onModeChange={setSelectedMode}
+                  disabled={isStreaming}
+                  className="scale-75 sm:scale-100 origin-center"
+                />
+              </div>
             </div>
-          </div>
-          
-          {/* Modern Message Input Area - Hidden in Voice Mode */}
-          {selectedMode !== 'voice' && (
-            <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 sm:py-4">
+          )}
+
+          {/* Modern Message Input Area */}
+          <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 sm:py-4">
             {/* Selected Image Preview */}
             {selectedImage && (
               <div className="mb-3 relative inline-block">
-                <img 
-                  src={selectedImage} 
-                  alt="Selected" 
+                <img
+                  src={selectedImage}
+                  alt="Selected"
                   className="max-h-20 rounded-lg border-2 border-primary/20"
                 />
                 <Button
@@ -863,24 +1168,38 @@ export default function ChatFixed() {
                 </Button>
               </div>
             )}
-            
+
             {/* Input Container with Modern Shadow */}
-            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 backdrop-blur-sm transition-all hover:shadow-xl">
-              <div className="flex items-end gap-2 p-2">
+            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 backdrop-blur-sm transition-all hover:shadow-xl animate-slide-in-up">
+              <div className="flex items-end gap-2 p-3 sm:p-2">
                 {/* Attachment Button */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-primary/10 shrink-0 self-end"
+                  className="h-11 w-11 sm:h-10 sm:w-10 rounded-full hover:bg-primary/10 shrink-0 self-end transition-transform active:scale-95"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isStreaming}
                   data-testid="button-attach"
+                  title="Upload image"
                 >
                   {selectedImage ? (
                     <ImageIcon className="h-5 w-5 text-primary" />
                   ) : (
                     <Paperclip className="h-5 w-5 text-muted-foreground" />
                   )}
+                </Button>
+
+                {/* AI Image Generator Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 sm:h-10 sm:w-10 rounded-full hover:bg-primary/10 shrink-0 self-end transition-transform active:scale-95"
+                  onClick={() => setShowImageGenerator(true)}
+                  disabled={isStreaming}
+                  data-testid="button-generate-image"
+                  title="Generate AI image"
+                >
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </Button>
 
                 {/* Text Input */}
@@ -895,12 +1214,17 @@ export default function ChatFixed() {
                       }
                     }}
                     placeholder={
-                      selectedMode === 'chat' ? "Your Gotta Guy™..." :
-                      selectedMode === 'search' ? "Search the web..." :
-                      selectedMode === 'research' ? "Deep research question..." :
-                      selectedMode === 'code' ? "Describe your code needs..." :
-                      selectedMode === 'voice' ? "Or press mic to speak 🎤" :
-                      "Type a message..."
+                      selectedMode === "chat"
+                        ? "Ask SaintSal anything..."
+                        : selectedMode === "search"
+                          ? "Search the web with AI..."
+                          : selectedMode === "research"
+                            ? "Deep research question..."
+                            : selectedMode === "code"
+                              ? "Describe your code needs..."
+                              : selectedMode === "voice"
+                                ? "Or press mic to speak 🎤"
+                                : "Message SaintSal..."
                     }
                     className="min-h-[44px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-2 py-2"
                     disabled={isStreaming}
@@ -919,7 +1243,7 @@ export default function ChatFixed() {
                 <Button
                   onClick={() => handleSendMessage()}
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 self-end transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  className="h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 self-end transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                   disabled={(!input.trim() && !selectedImage) || isStreaming}
                   data-testid="button-send"
                 >
@@ -930,7 +1254,7 @@ export default function ChatFixed() {
                   )}
                 </Button>
               </div>
-              
+
               {/* Hidden File Input */}
               <input
                 ref={fileInputRef}
@@ -951,6 +1275,31 @@ export default function ChatFixed() {
           </div>
           )}
         </div>
+
+        {/* Image Generator Modal */}
+        {showImageGenerator && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                  AI Image Generator
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowImageGenerator(false)}
+                  className="rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <ImageGenerator onImageGenerated={handleImageGenerated} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

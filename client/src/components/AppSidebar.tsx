@@ -9,6 +9,8 @@ import {
   Shield,
   ChevronDown,
   LogOut,
+  Mic,
+  Wand2,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -44,6 +46,16 @@ const mainNavigation = [
     title: "Chat",
     url: "/chat",
     icon: MessageSquare,
+  },
+  {
+    title: "Voice Mode",
+    url: "/voice",
+    icon: Mic,
+  },
+  {
+    title: "Image Generator",
+    url: "/images",
+    icon: Wand2,
   },
   {
     title: "Playground",
@@ -99,8 +111,12 @@ export function AppSidebar() {
               <span className="text-primary-foreground font-bold text-sm">SS</span>
             </div>
             <div>
-              <div className="font-bold text-sm text-primary">SaintSal</div>
-              <div className="text-xs text-accent">Your Gotta Guy™</div>
+              <div className="font-bold text-sm">
+                <span className="text-foreground">Saint</span>
+                <span className="text-accent">Sal</span>
+                <span className="text-foreground text-[10px] align-top">™</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Responsible Intelligence</div>
             </div>
           </div>
         </Link>

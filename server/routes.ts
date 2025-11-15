@@ -12,13 +12,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
-// Toggle between Replit auth and simple auth based on environment
-import { setupSimpleAuth, isAuthenticated as simpleIsAuth } from "./simple-auth";
-// import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
-
-// Use simple auth middleware and request type for local development
-const isAuthenticated = simpleIsAuth;
-type SessionAuthRequest = any;
+// Use simple email/password authentication
+import { setupSimpleAuth, isAuthenticated } from "./simple-auth";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -36,16 +31,29 @@ if (process.env.OPENAI_API_KEY) {
   });
 }
 
-export async function registerRoutes(app: Express) {
-  // ✅ SETUP SIMPLE AUTHENTICATION (for local dev)
-  await setupSimpleAuth(app);
+// Helper to sanitize user data (exclude sensitive fields like passwordHash)
+function sanitizeUser(user: any) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    profileImageUrl: user.profileImageUrl,
+    role: user.role,
+    subscriptionStatus: user.subscriptionStatus,
+    stripeCustomerId: user.stripeCustomerId,
+  };
+}
 
-  // Get current user endpoint is now handled by simple-auth.ts
+export async function registerRoutes(app: Express) {
+  // ✅ SETUP SIMPLE EMAIL/PASSWORD AUTHENTICATION
+  await setupSimpleAuth(app);
 
   // Conversations (protected by isAuthenticated)
   app.get("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
@@ -56,7 +64,7 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const data = insertConversationSchema.parse({
         ...req.body,
         userId,
@@ -95,7 +103,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Messages (protected by isAuthenticated)
-  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: any, res: Response) => {
     try {
       const messages = await storage.getMessagesByConversationId(req.params.id);
       res.json(messages);
@@ -108,7 +116,7 @@ export async function registerRoutes(app: Express) {
   // API Environments (protected by isAuthenticated)
   app.get("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const environments = await storage.getEnvironmentsByUserId(userId);
       res.json(environments);
     } catch (error) {
@@ -119,7 +127,7 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const data = insertApiEnvironmentSchema.parse({
         ...req.body,
         userId,
@@ -146,7 +154,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments/:id/variables", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/environments/:id/variables", isAuthenticated, async (req: any, res: Response) => {
     try {
       const data = insertEnvironmentVariableSchema.parse({
         ...req.body,
@@ -166,7 +174,7 @@ export async function registerRoutes(app: Express) {
   // Playground Execute (protected by isAuthenticated)
   app.post("/api/playground/execute", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const { environmentId, method, url, headers, body } = req.body;
       
       const startTime = Date.now();
@@ -205,7 +213,7 @@ export async function registerRoutes(app: Express) {
   // Stats (protected by isAuthenticated)
   app.get("/api/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.session.userId;
       const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {
@@ -228,8 +236,11 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/admin/users", isAuthenticated, async (req: any, res: Response) => {
     try {
+      // TODO: Add role-based authorization check (admin only)
       const users = await storage.getAllUsers();
-      res.json(users);
+      // Sanitize user data to exclude passwordHash
+      const sanitizedUsers = users.map(user => sanitizeUser(user));
+      res.json(sanitizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).send("Failed to fetch users");
@@ -287,6 +298,40 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // User Profile Routes (protected by isAuthenticated)
+  const profileUpdateSchema = z.object({
+    firstName: z.string().min(1, "First name is required").max(100),
+    lastName: z.string().min(1, "Last name is required").max(100),
+    phone: z.string().regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format").min(10, "Phone must be at least 10 characters").max(20),
+  }).strict(); // Ensure no extra fields are sent
+
+  app.patch("/api/user/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      console.log("[PATCH /api/user/profile] Request body:", JSON.stringify(req.body));
+      
+      // Validate request body
+      const validatedData = profileUpdateSchema.parse(req.body);
+      
+      console.log("[PATCH /api/user/profile] Validated data:", JSON.stringify(validatedData));
+
+      const updatedUser = await storage.updateUser(userId, validatedData);
+      
+      console.log("[PATCH /api/user/profile] Updated user:", updatedUser.id, updatedUser.firstName, updatedUser.lastName, updatedUser.phone);
+      
+      // Return safe user data (exclude passwordHash and other sensitive fields)
+      res.json(sanitizeUser(updatedUser));
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        console.error("[PATCH /api/user/profile] Validation error:", JSON.stringify(error.errors));
+        return res.status(400).json({ message: "Validation failed", errors: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // File Upload Routes
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -296,8 +341,46 @@ export async function registerRoutes(app: Express) {
     },
   });
 
+  // Profile Image Upload (protected by isAuthenticated)
+  app.post("/api/user/profile-image", isAuthenticated, upload.single("image"), async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No image provided" });
+      }
+
+      // Validate image type
+      if (!req.file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "File must be an image" });
+      }
+
+      // Process image and get base64
+      const processedFile = await fileProcessor.processFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Create data URL for profile image
+      const profileImageUrl = `data:${req.file.mimetype};base64,${processedFile.base64}`;
+
+      // Update user profile with image URL
+      const updatedUser = await storage.updateUser(userId, { profileImageUrl });
+      
+      // Return safe user data (exclude passwordHash)
+      res.json({ 
+        user: sanitizeUser(updatedUser),
+        imageUrl: profileImageUrl 
+      });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
+
   // File Upload Routes (protected by isAuthenticated)
-  app.post("/api/upload", isAuthenticated, upload.single("file"), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/upload", isAuthenticated, upload.single("file"), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file provided" });
@@ -316,7 +399,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/upload/multiple", isAuthenticated, upload.array("files", 5), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/upload/multiple", isAuthenticated, upload.array("files", 5), async (req: any, res: Response) => {
     try {
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ message: "No files provided" });
@@ -355,7 +438,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Voice endpoints (protected by isAuthenticated)
-  app.post("/api/voice/tts", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/voice/tts", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { text, voiceId } = req.body;
       
@@ -387,7 +470,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/voice/stt", isAuthenticated, upload.single("audio"), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/voice/stt", isAuthenticated, upload.single("audio"), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "Audio file is required" });

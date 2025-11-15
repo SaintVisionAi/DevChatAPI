@@ -60,7 +60,11 @@ export default function Landing() {
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
               <span className="text-primary font-bold text-base sm:text-lg">S</span>
             </div>
-            <span className="font-semibold text-base sm:text-lg">SaintSal</span>
+            <span className="font-semibold text-base sm:text-lg">
+              <span className="text-foreground">Saint</span>
+              <span className="text-accent">Sal</span>
+              <span className="text-foreground text-[10px] align-top">™</span>
+            </span>
           </div>
           
           {/* Desktop Navigation */}
@@ -136,16 +140,36 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-accent/5 to-background" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          <Badge variant="outline" className="mb-4 sm:mb-6 border-primary/50 bg-primary/5 text-primary font-medium tracking-wide text-xs sm:text-sm" data-testid="badge-patent">
-            Protected by U.S. Patent #10,290,222
-          </Badge>
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-light mb-4 sm:mb-6 tracking-tight leading-[0.95]" style={{fontWeight: 300}} data-testid="text-hero-title">
-            <span className="font-semibold">Cookin' Knowledge</span>
-            <br />
-            <span className="text-primary font-bold tracking-tighter" style={{textShadow: '0 0 40px rgba(230, 179, 37, 0.3)'}}>Your Gotta Guy™</span>
+          {/* Cookin' Knowledge Badge - Blue Accent */}
+          <div className="mb-6 sm:mb-8 inline-flex items-center gap-3">
+            <Badge 
+              variant="outline" 
+              className="border-[#4DA6FF]/50 bg-[#4DA6FF]/10 text-[#4DA6FF] font-semibold tracking-wide text-sm sm:text-base px-4 py-1.5" 
+              data-testid="badge-brand"
+            >
+              Cookin' Knowledge
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className="border-primary/30 bg-primary/5 text-primary/70 font-medium tracking-wide text-xs" 
+              data-testid="badge-patent"
+            >
+              Patent #10,290,222
+            </Badge>
+          </div>
+          
+          {/* Main Hero - SaintSal™ */}
+          <h1 className="text-5xl sm:text-7xl md:text-9xl font-light mb-3 sm:mb-4 tracking-tight leading-[0.9]" style={{fontWeight: 200}} data-testid="text-hero-title">
+            <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80">SaintSal</span><span className="text-primary text-4xl sm:text-6xl md:text-8xl align-super">™</span>
           </h1>
-          <p className="text-base sm:text-xl md:text-2xl text-muted-foreground mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed font-light px-2" data-testid="text-hero-description">
-            AI Chat • <span className="text-accent">Web Search</span> • Voice • Code Agent • <span className="text-accent">Deep Research</span> • Everything
+          
+          {/* Tagline - Responsible Intelligence */}
+          <p className="text-xl sm:text-2xl md:text-3xl text-muted-foreground/90 mb-8 sm:mb-10 font-light tracking-wide" style={{letterSpacing: '0.02em'}} data-testid="text-hero-subtitle">
+            Responsible Intelligence
+          </p>
+          
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-10 sm:mb-14 max-w-3xl mx-auto leading-relaxed font-light px-2" data-testid="text-hero-description">
+            AI Chat • <span className="text-[#4DA6FF]">Web Search</span> • Voice • Code Agent • <span className="text-[#4DA6FF]">Deep Research</span> • Everything
           </p>
           <div className="flex gap-2 sm:gap-4 justify-center flex-wrap px-2">
             <Button size="sm" className="sm:text-base sm:h-11 sm:px-8" asChild data-testid="button-get-started">

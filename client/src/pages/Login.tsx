@@ -21,33 +21,28 @@ export default function Login() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+        });
+        window.location.href = "/chat";
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Login Failed",
+          description: data.error || "Invalid credentials",
+          variant: "destructive",
+        });
       }
-      
+    } catch (error) {
       toast({
-        title: "Success",
-        description: "Logged in successfully!",
-      });
-
-      // Redirect to dashboard
-      setTimeout(() => {
-        setLocation("/dashboard");
-        window.location.reload(); // Force reload to update auth state
-      }, 500);
-    } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid email or password",
+        title: "Error",
+        description: "Failed to login. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -64,8 +59,8 @@ export default function Login() {
               <span className="text-primary-foreground font-bold text-2xl">CK</span>
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to Cookin' Knowledge</CardTitle>
-          <CardDescription>Your Gotta Guy™ for Everything</CardDescription>
+          <CardTitle className="text-2xl">Welcome to SaintSal™</CardTitle>
+          <CardDescription>Responsible Intelligence</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -74,11 +69,10 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="ryan@cookinknowledge.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
                 data-testid="input-email"
               />
             </div>
@@ -87,11 +81,9 @@ export default function Login() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading}
                 data-testid="input-password"
               />
             </div>
@@ -100,26 +92,11 @@ export default function Login() {
               className="w-full"
               size="lg"
               disabled={isLoading}
-              data-testid="button-login"
+              data-testid="button-submit"
             >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-5 w-5" />
-                  Sign In
-                </>
-              )}
+              <LogIn className="mr-2 h-5 w-5" />
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
-            <p className="text-sm text-muted-foreground text-center mt-4">
-              Don't have an account?{" "}
-              <a href="/register" className="text-primary hover:underline font-medium">
-                Create one
-              </a>
-            </p>
           </form>
         </CardContent>
       </Card>

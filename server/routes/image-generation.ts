@@ -1,21 +1,17 @@
 // Image generation routes - DALL-E and Gemini
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { isAuthenticated } from '../simple-auth';
 
 const router = Router();
 
 // Generate image with DALL-E (OpenAI)
-router.post('/dalle', async (req: Request, res: Response) => {
+router.post('/dalle', isAuthenticated, async (req: any, res: Response) => {
   try {
     const { prompt, size = '1024x1024', quality = 'standard' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    // Check if user is authenticated
-    if (!(req as any).user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // Import OpenAI
@@ -38,7 +34,7 @@ router.post('/dalle', async (req: Request, res: Response) => {
       quality: quality as 'standard' | 'hd',
     });
 
-    const imageUrl = response.data[0]?.url;
+    const imageUrl = response.data?.[0]?.url;
     
     if (!imageUrl) {
       return res.status(500).json({ error: 'Failed to generate image' });
@@ -61,18 +57,76 @@ router.post('/dalle', async (req: Request, res: Response) => {
   }
 });
 
-// Generate image with Gemini
-router.post('/gemini', async (req: Request, res: Response) => {
+// Generate image with Grok (xAI Aurora)
+router.post('/grok', isAuthenticated, async (req: any, res: Response) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, aspectRatio = '16:9' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Check if user is authenticated
-    if (!(req as any).user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(503).json({ error: 'Grok service not available. Please configure XAI_API_KEY or GROK_API_KEY.' });
+    }
+
+    console.log('[Grok Image] Generating image:', { prompt: prompt.substring(0, 50), aspectRatio });
+
+    const response = await fetch('https://api.x.ai/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'aurora',
+        prompt,
+        aspect_ratio: aspectRatio,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Grok Image] API Error:', response.status, errorText);
+      return res.status(response.status).json({ 
+        error: `Grok API error: ${response.status}`,
+        details: errorText
+      });
+    }
+
+    const data = await response.json();
+    const imageUrl = data.data?.[0]?.url;
+    
+    if (!imageUrl) {
+      return res.status(500).json({ error: 'Failed to generate image - no URL returned' });
+    }
+
+    console.log('[Grok Image] Image generated successfully');
+
+    return res.json({
+      success: true,
+      imageUrl,
+      prompt,
+      model: 'aurora',
+    });
+  } catch (error: any) {
+    console.error('[Grok Image] Error:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Failed to generate image',
+      details: error.toString()
+    });
+  }
+});
+
+// Generate image with Gemini
+router.post('/gemini', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
     }
 
     // Import Gemini provider
