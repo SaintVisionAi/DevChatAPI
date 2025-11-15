@@ -72,10 +72,11 @@ export class GrokProvider {
         return content;
       }
 
-      // Handle streaming response
+      // Handle streaming response with newline-aware buffering
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullResponse = '';
+      let buffer = ''; // Buffer for incomplete lines
 
       if (!reader) throw new Error('No response body');
 
@@ -83,27 +84,33 @@ export class GrokProvider {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
+        // Append to buffer and process complete lines
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        // Keep last incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') break;
 
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                fullResponse += content;
-                ws.send(JSON.stringify({
-                  type: 'chunk',
-                  content,
-                }));
-              }
-            } catch (e) {
-              // Skip invalid JSON
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              ws.send(JSON.stringify({
+                type: 'chunk',
+                content,
+              }));
             }
+          } catch (e) {
+            // Log but continue on JSON parse errors
+            console.error('Grok JSON parse error:', e, 'Data:', data);
           }
         }
       }

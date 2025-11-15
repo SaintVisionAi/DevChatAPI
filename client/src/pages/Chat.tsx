@@ -302,9 +302,24 @@ export default function ChatFixed() {
         });
         ws.close();
       } else if (data.type === "error") {
+        // Graceful error handling with user-friendly messages
+        let errorMessage = data.message || "Failed to send message";
+        let actionText = "Try again";
+
+        if (errorMessage.includes("Rate limit")) {
+          errorMessage = "AI service is busy. Please try again in a moment.";
+          actionText = "Retry";
+        } else if (errorMessage.includes("Unauthorized")) {
+          errorMessage = "Session expired. Please log in again.";
+          actionText = "Login";
+        } else if (errorMessage.includes("not configured")) {
+          errorMessage = "AI service temporarily unavailable. Contact support if this persists.";
+          actionText = "OK";
+        }
+
         toast({
           title: "Error",
-          description: data.message || "Failed to send message",
+          description: errorMessage,
           variant: "destructive",
         });
         setIsStreaming(false);
@@ -313,14 +328,30 @@ export default function ChatFixed() {
       }
     };
 
-    ws.onerror = () => {
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
       toast({
         title: "Connection Error",
-        description: "Failed to connect to chat service",
+        description: "Lost connection to AI service. Check your internet and try again.",
         variant: "destructive",
       });
       setIsStreaming(false);
       setStreamingMessage("");
+    };
+
+    ws.onclose = (event) => {
+      console.log("WebSocket connection closed", event.code, event.reason);
+      
+      // Only show toast if unexpected close (not normal closure)
+      if (event.code !== 1000 && isStreaming) {
+        toast({
+          title: "Connection Closed",
+          description: "Connection to AI service was interrupted. Please try sending your message again.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        setStreamingMessage("");
+      }
     };
   };
 
