@@ -17,6 +17,7 @@ export const sessionStore = new pgStore({
 });
 
 export function getSession() {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.REPL_ID;
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -24,7 +25,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction, // Secure cookies in production
+      sameSite: isProduction ? "strict" : "lax",
       maxAge: sessionTtl,
     },
   });
@@ -37,10 +39,16 @@ export async function setupSimpleAuth(app: Express) {
   // Register endpoint
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { firstName, lastName, email, password } = req.body;
+      const { firstName, lastName, email, phone, password } = req.body;
 
-      if (!firstName || !lastName || !email || !password) {
-        return res.status(400).json({ error: "All fields are required" });
+      if (!firstName || !lastName || !email || !phone || !password) {
+        return res.status(400).json({ error: "All fields are required: name, email, phone, and password" });
+      }
+
+      // Validate phone format (basic validation)
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      if (!phoneRegex.test(phone)) {
+        return res.status(400).json({ error: "Invalid phone number format" });
       }
 
       // Validate password strength
@@ -63,6 +71,7 @@ export async function setupSimpleAuth(app: Express) {
         email,
         firstName,
         lastName,
+        phone,
         passwordHash,
         role: "viewer", // Default role
       });

@@ -12,8 +12,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { fileProcessor } from "./fileprocessor";
 import multer from "multer";
-// Use Replit OIDC authentication
-import { setupAuth, isAuthenticated, requireAdmin, type SessionAuthRequest } from "./replitAuth";
+// Use simple email/password authentication
+import { setupSimpleAuth, isAuthenticated } from "./simple-auth";
 
 // Initialize AI clients only if API keys are available
 let anthropic: Anthropic | null = null;
@@ -32,26 +32,13 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 export async function registerRoutes(app: Express) {
-  // ✅ SETUP REPLIT OIDC AUTHENTICATION
-  await setupAuth(app);
-
-  // Get current user endpoint
-  app.get("/api/auth/user", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
-    const user = req.user;
-    res.json({
-      id: user.claims.sub,
-      email: user.claims.email,
-      firstName: user.claims.first_name,
-      lastName: user.claims.last_name,
-      name: user.claims.name,
-      profileImageUrl: user.claims.profile_image_url,
-    });
-  });
+  // ✅ SETUP SIMPLE EMAIL/PASSWORD AUTHENTICATION
+  await setupSimpleAuth(app);
 
   // Conversations (protected by isAuthenticated)
-  app.get("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const conversations = await storage.getConversationsByUserId(userId);
       res.json(conversations);
     } catch (error) {
@@ -60,9 +47,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const data = insertConversationSchema.parse({
         ...req.body,
         userId,
@@ -101,7 +88,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Messages (protected by isAuthenticated)
-  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: any, res: Response) => {
     try {
       const messages = await storage.getMessagesByConversationId(req.params.id);
       res.json(messages);
@@ -112,9 +99,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // API Environments (protected by isAuthenticated)
-  app.get("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const environments = await storage.getEnvironmentsByUserId(userId);
       res.json(environments);
     } catch (error) {
@@ -123,9 +110,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/environments", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const data = insertApiEnvironmentSchema.parse({
         ...req.body,
         userId,
@@ -152,7 +139,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/environments/:id/variables", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/environments/:id/variables", isAuthenticated, async (req: any, res: Response) => {
     try {
       const data = insertEnvironmentVariableSchema.parse({
         ...req.body,
@@ -170,9 +157,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Playground Execute (protected by isAuthenticated)
-  app.post("/api/playground/execute", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/playground/execute", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { environmentId, method, url, headers, body } = req.body;
       
       const startTime = Date.now();
@@ -209,9 +196,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Stats (protected by isAuthenticated)
-  app.get("/api/stats", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.get("/api/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {
@@ -303,7 +290,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // File Upload Routes (protected by isAuthenticated)
-  app.post("/api/upload", isAuthenticated, upload.single("file"), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/upload", isAuthenticated, upload.single("file"), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file provided" });
@@ -322,7 +309,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/upload/multiple", isAuthenticated, upload.array("files", 5), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/upload/multiple", isAuthenticated, upload.array("files", 5), async (req: any, res: Response) => {
     try {
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ message: "No files provided" });
@@ -361,7 +348,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Voice endpoints (protected by isAuthenticated)
-  app.post("/api/voice/tts", isAuthenticated, async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/voice/tts", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { text, voiceId } = req.body;
       
@@ -387,7 +374,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/voice/stt", isAuthenticated, upload.single("audio"), async (req: SessionAuthRequest, res: Response) => {
+  app.post("/api/voice/stt", isAuthenticated, upload.single("audio"), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "Audio file is required" });
