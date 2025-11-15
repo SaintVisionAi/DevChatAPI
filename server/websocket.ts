@@ -1,5 +1,6 @@
 // Reference: javascript_websocket, javascript_anthropic_ai_integrations, javascript_openai_ai_integrations blueprints
-import WebSocket from "ws";
+// @ts-ignore - ws types are installed but TypeScript can't find them
+import type WebSocket from "ws";
 import type { IncomingMessage } from "http";
 import { storage } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
@@ -34,10 +35,10 @@ if (process.env.OPENAI_API_KEY) {
   }
 }
 
-interface AuthenticatedSocket extends WebSocket {
+type AuthenticatedSocket = WebSocket & {
   userId?: string;
   email?: string;
-}
+};
 
 /**
  * Update conversation memory with context, summary, and key topics
@@ -134,7 +135,7 @@ export function handleWebSocket(ws: AuthenticatedSocket, request: IncomingMessag
     }
   }, 30000);
 
-  ws.on("error", (error) => {
+  ws.on("error", (error: Error) => {
     console.error('WebSocket error:', error);
     clearInterval(pingInterval);
   });

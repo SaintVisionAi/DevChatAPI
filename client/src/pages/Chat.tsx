@@ -78,6 +78,7 @@ export default function ChatFixed() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const {
     speak,
@@ -91,6 +92,7 @@ export default function ChatFixed() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -362,6 +364,12 @@ export default function ChatFixed() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
+    
+    handleFileUpload(file);
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -372,6 +380,35 @@ export default function ChatFixed() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileDrop = (files: File[]) => {
+    const file = files[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleFileDrop(files);
   };
 
   if (authLoading) {
@@ -611,7 +648,26 @@ export default function ChatFixed() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div 
+        className="flex-1 flex flex-col min-w-0 overflow-hidden relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        ref={chatContainerRef}
+      >
+        {/* Drag Over Overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm border-4 border-dashed border-primary flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
+                <ImageIcon className="w-10 h-10 text-primary" />
+              </div>
+              <div className="text-xl font-bold text-primary">Drop your image here</div>
+              <div className="text-sm text-muted-foreground">Upload images to chat with vision AI</div>
+            </div>
+          </div>
+        )}
+
         {/* Header - Always Visible */}
 
         <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-border shrink-0 bg-background/95 backdrop-blur-sm z-10">
