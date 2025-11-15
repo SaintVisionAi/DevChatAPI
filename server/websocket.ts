@@ -491,7 +491,7 @@ async function handleSearchMode(
 
     // Search with Perplexity
     const searchResult = await perplexity.search(perplexityMessages, {
-      model: 'llama-3.1-sonar-large-128k-online',
+      model: 'sonar-pro',
       temperature: 0.2,
       searchRecencyFilter: 'month',
       returnRelatedQuestions: true,
@@ -675,7 +675,7 @@ Question: ${userMessage}`;
     const searchResult = await perplexity.search([
       { role: 'user', content: userMessage }
     ], {
-      model: 'llama-3.1-sonar-huge-128k-online',
+      model: 'sonar-reasoning',
       temperature: 0.3,
       searchRecencyFilter: 'month',
     });

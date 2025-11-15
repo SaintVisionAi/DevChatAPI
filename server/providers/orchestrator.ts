@@ -112,7 +112,7 @@ export class AIOrchestrator {
     }));
 
     const result = await perplexity.search(perplexityMessages, {
-      model: 'llama-3.1-sonar-large-128k-online',
+      model: 'sonar-pro',
       temperature: 0.2,
       searchRecencyFilter: 'month',
       returnRelatedQuestions: true,

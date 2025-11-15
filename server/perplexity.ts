@@ -7,7 +7,7 @@ export interface PerplexityMessage {
 }
 
 export interface PerplexitySearchOptions {
-  model?: 'sonar' | 'sonar-pro' | 'sonar-reasoning' | 'sonar-reasoning-pro' | 'llama-3.1-sonar-large-128k-online' | 'llama-3.1-sonar-huge-128k-online';
+  model?: 'sonar' | 'sonar-pro' | 'sonar-reasoning' | 'sonar-reasoning-pro';
   temperature?: number;
   max_tokens?: number;
   searchDomainFilter?: string[];
