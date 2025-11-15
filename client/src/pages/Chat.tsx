@@ -242,6 +242,24 @@ export default function ChatFixed() {
       } else if (data.type === "chunk") {
         setStreamingMessage((prev) => prev + data.content);
         fullMessage += data.content;
+      } else if (data.type === "audio_chunk") {
+        // Stream audio chunk from ElevenLabs in Voice mode
+        if (data.audio && selectedMode === "voice") {
+          try {
+            // Decode base64 audio and play
+            const audioData = `data:${data.mimeType || 'audio/mpeg'};base64,${data.audio}`;
+            const audio = new Audio(audioData);
+            await audio.play();
+          } catch (error) {
+            console.error("Audio playback error:", error);
+          }
+        }
+      } else if (data.type === "audio_end") {
+        // Voice streaming finished
+        console.log("[Voice] Audio streaming completed");
+      } else if (data.type === "status") {
+        // Show status messages (e.g., "Processing with SaintSal voice...")
+        console.log("[Status]", data.message);
       } else if (data.type === "done") {
         // Auto-speak in voice mode OR if auto-speak is enabled
         if ((selectedMode === "voice" || autoSpeak) && fullMessage) {

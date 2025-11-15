@@ -285,6 +285,11 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       return;
     }
     
+    if (mode === 'voice') {
+      await handleVoiceMode(ws, conversationId, userMessage, model);
+      return;
+    }
+    
     // Continue with legacy chat handling
     if (!anthropic && !openai) {
       ws.send(JSON.stringify({
@@ -741,6 +746,45 @@ Provide a comprehensive synthesis with:
     ws.send(JSON.stringify({
       type: "error",
       message: "Failed to complete research",
+    }));
+  }
+}
+
+// VOICE MODE - Ultra-realistic voice with ElevenLabs SaintSal Agent
+async function handleVoiceMode(
+  ws: AuthenticatedSocket,
+  conversationId: string,
+  userMessage: string,
+  model: string
+) {
+  try {
+    ws.send(JSON.stringify({
+      type: "status",
+      message: "🎙️ Processing with SaintSal voice...",
+    }));
+
+    const { elevenLabs } = await import("./providers/elevenlabs");
+    
+    if (!elevenLabs.isAvailable()) {
+      ws.send(JSON.stringify({
+        type: "error",
+        message: "ElevenLabs API key required for voice mode. Please add ELEVENLABS_API_KEY to secrets.",
+      }));
+      return;
+    }
+
+    // Stream conversation with ElevenLabs Conversational AI agent
+    // This will handle both text streaming AND voice streaming
+    await elevenLabs.streamConversation(userMessage, ws, {
+      agentId: 'agent_540Nk85Srebarapn6vd3mhBxH7z', // Your SaintSal agent
+    });
+
+    ws.send(JSON.stringify({ type: "done" }));
+  } catch (error) {
+    console.error('Voice mode error:', error);
+    ws.send(JSON.stringify({
+      type: "error",
+      message: error instanceof Error ? error.message : "Voice processing failed",
     }));
   }
 }
