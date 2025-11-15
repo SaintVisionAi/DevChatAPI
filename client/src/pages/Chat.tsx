@@ -82,6 +82,7 @@ export default function ChatFixed() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showImageGenerator, setShowImageGenerator] = useState(false);
 
   const {
     speak,
@@ -460,6 +461,15 @@ export default function ChatFixed() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageGenerated = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setShowImageGenerator(false);
+    toast({
+      title: "Image ready!",
+      description: "Your generated image has been added to the chat",
+    });
   };
 
   const handleFileDrop = (files: File[]) => {
@@ -955,8 +965,8 @@ export default function ChatFixed() {
                                   Sources:
                                 </div>
                                 <div className="space-y-1.5">
-                                  {(message.searchResults as any[]).map(
-                                    (citation: any, idx: number) => (
+                                  {(message.searchResults as string[]).map(
+                                    (citation: string, idx: number) => (
                                       <div
                                         key={idx}
                                         className="flex items-start gap-2 text-xs"
@@ -968,13 +978,13 @@ export default function ChatFixed() {
                                           {idx + 1}
                                         </Badge>
                                         <a
-                                          href={String(citation)}
+                                          href={citation}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="text-primary hover:underline break-all leading-relaxed"
                                           data-testid={`citation-${idx}`}
                                         >
-                                          {String(citation)}
+                                          {citation}
                                         </a>
                                       </div>
                                     ),
@@ -1087,12 +1097,26 @@ export default function ChatFixed() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isStreaming}
                   data-testid="button-attach"
+                  title="Upload image"
                 >
                   {selectedImage ? (
                     <ImageIcon className="h-5 w-5 text-primary" />
                   ) : (
                     <Paperclip className="h-5 w-5 text-muted-foreground" />
                   )}
+                </Button>
+
+                {/* AI Image Generator Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 sm:h-10 sm:w-10 rounded-full hover:bg-primary/10 shrink-0 self-end transition-transform active:scale-95"
+                  onClick={() => setShowImageGenerator(true)}
+                  disabled={isStreaming}
+                  data-testid="button-generate-image"
+                  title="Generate AI image"
+                >
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </Button>
 
                 {/* Text Input */}
@@ -1108,16 +1132,16 @@ export default function ChatFixed() {
                     }}
                     placeholder={
                       selectedMode === "chat"
-                        ? "Your Gotta Guy™..."
+                        ? "Ask SaintSal anything..."
                         : selectedMode === "search"
-                          ? "Search the web..."
+                          ? "Search the web with AI..."
                           : selectedMode === "research"
                             ? "Deep research question..."
                             : selectedMode === "code"
                               ? "Describe your code needs..."
                               : selectedMode === "voice"
                                 ? "Or press mic to speak 🎤"
-                                : "Type a message..."
+                                : "Message SaintSal..."
                     }
                     className="min-h-[44px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-2 py-2"
                     disabled={isStreaming}
@@ -1167,6 +1191,31 @@ export default function ChatFixed() {
             </div>
           </div>
         </div>
+
+        {/* Image Generator Modal */}
+        {showImageGenerator && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                  AI Image Generator
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowImageGenerator(false)}
+                  className="rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <ImageGenerator onImageGenerated={handleImageGenerated} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
