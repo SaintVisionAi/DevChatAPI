@@ -45,6 +45,7 @@ import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
 import { FileUpload } from "@/components/FileUpload";
+import { ImageGenerator } from "@/components/ImageGenerator";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -813,8 +814,8 @@ export default function ChatFixed() {
           ) : (
             /* Messages */
             <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8">
-              {messages?.map((message) => (
-                <div key={message.id} className="group">
+              {messages?.map((message, index) => (
+                <div key={message.id} className="group animate-slide-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
                   {message.role === "user" ? (
                     <div className="flex gap-3 sm:gap-4 items-start">
                       <Avatar className="h-8 w-8 shrink-0 ring-2 ring-background">
@@ -997,13 +998,13 @@ export default function ChatFixed() {
             )}
 
             {/* Input Container with Modern Shadow */}
-            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 backdrop-blur-sm transition-all hover:shadow-xl">
-              <div className="flex items-end gap-2 p-2">
+            <div className="relative bg-card rounded-2xl shadow-lg border border-border/50 backdrop-blur-sm transition-all hover:shadow-xl animate-slide-in-up">
+              <div className="flex items-end gap-2 p-3 sm:p-2">
                 {/* Attachment Button */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-primary/10 shrink-0 self-end"
+                  className="h-11 w-11 sm:h-10 sm:w-10 rounded-full hover:bg-primary/10 shrink-0 self-end transition-transform active:scale-95"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isStreaming}
                   data-testid="button-attach"
@@ -1056,7 +1057,7 @@ export default function ChatFixed() {
                 <Button
                   onClick={() => handleSendMessage()}
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 self-end transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  className="h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-primary hover:bg-primary/90 shrink-0 self-end transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                   disabled={(!input.trim() && !selectedImage) || isStreaming}
                   data-testid="button-send"
                 >

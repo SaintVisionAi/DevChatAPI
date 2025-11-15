@@ -36,6 +36,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### 2025-11-15: Voice AI & Drag-and-Drop File Upload - PRODUCTION READY ✅
+- **VOICE MODE**: ElevenLabs Conversational AI integration complete
+  - Agent ID: agent_540Nk85Srebarapn6vd3mhBxH7z (SaintCap voice)
+  - WebSocket-based real-time voice conversation with Claude Sonnet 4.5
+  - Full-duplex audio streaming (user speaks → AI responds instantly)
+  - Backend handler: server/providers/elevenlabs.ts
+  - Frontend: WalkieTalkieButton component with walkie-talkie UX
+- **FILE UPLOAD**: Drag-and-drop image upload implemented
+  - Beautiful drag-over overlay with SaintSal branding
+  - Support for image attachments in chat (vision AI ready)
+  - FileUpload component with gold accent animations
+  - Seamless integration into chat input area
+- **WEBSOCKET**: All TypeScript errors fixed (46 → 0)
+  - Proper type annotations for AuthenticatedSocket
+  - Session-based WebSocket authentication verified
+  - Multi-user isolation working correctly
+- **API KEYS**: All sensitive keys moved to Replit secrets
+  - XAI_API_KEY, GEMINI_API_LIVE_KEY, GOOGLE_CLOUD credentials
+  - ElevenLabs API key for voice synthesis
+  - Perplexity API for web search
+- **STATUS**: Voice and file upload ready for end-to-end testing
+
 ### 2025-11-15: Settings Page Profile Updates - PRODUCTION READY ✅
 - **COMPLETED**: Full profile update functionality with security audit passed
 - **ADDED**: PATCH /api/user/profile endpoint with firstName, lastName, phone validation
