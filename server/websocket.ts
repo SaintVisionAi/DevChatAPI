@@ -569,9 +569,10 @@ async function handleCodeMode(
     const files = [];
     
     // Process code request
+    const codeFiles: any[] = [];
     const response = await codeAgent.processCodeRequest(
       userMessage,
-      files,
+      codeFiles,
       ws as any,
       {
         model: model.includes('claude') ? 'claude-sonnet-4-5-20250929' : 'gpt-4o',
@@ -586,7 +587,7 @@ async function handleCodeMode(
       role: "assistant",
       content: response,
       model: model,
-      codeFiles: files,
+      codeFiles: codeFiles,
     });
     
     ws.send(JSON.stringify({ type: "done" }));
@@ -728,10 +729,10 @@ Provide a comprehensive synthesis with:
       role: "assistant",
       content: fullResponse,
       model: model,
-      reasoning: {
+      reasoning: JSON.stringify({
         steps: ["Analysis", "Research", "Synthesis"],
         sources: searchResult.citations,
-      },
+      }),
     });
     
     ws.send(JSON.stringify({ type: "done" }));
