@@ -73,6 +73,8 @@ export default function ChatFixed() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [retryCount, setRetryCount] = useState(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [selectedMode, setSelectedMode] = useState<ChatMode>("chat");
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -184,27 +186,34 @@ export default function ChatFixed() {
     scrollToBottom();
   }, [messages, streamingMessage]);
 
-  const handleSendMessage = async (messageOverride?: string) => {
-    const messageText = messageOverride || input;
-    if (!messageText.trim() || isStreaming) return;
+  // Exponential backoff helper
+  const getRetryDelay = (attempt: number) => {
+    // 1s, 2s, 4s, 8s (max 8s)
+    return Math.min(1000 * Math.pow(2, attempt), 8000);
+  };
 
-    setInput("");
+  const connectWebSocket = async (
+    conversationId: string,
+    messageText: string,
+    attempt: number = 0
+  ): Promise<void> => {
+    const MAX_RETRIES = 3;
 
-    let conversationId = selectedConversationId;
-    if (!conversationId) {
-      const newConv = await createConversationMutation.mutateAsync(
-        messageText.slice(0, 50),
-      );
-      conversationId = newConv.id;
+    if (attempt > 0) {
+      const delay = getRetryDelay(attempt - 1);
+      setIsReconnecting(true);
+      toast({
+        title: "Reconnecting...",
+        description: `Attempt ${attempt}/${MAX_RETRIES}`,
+      });
+      await new Promise(resolve => setTimeout(resolve, delay));
+      setIsReconnecting(false);
     }
-
-    setIsStreaming(true);
-    setStreamingMessage("");
 
     // Construct WebSocket URL correctly using origin
     const wsUrl = new URL("/ws", window.location.origin);
     wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    console.log("[Chat] Connecting to WebSocket:", wsUrl.href);
+    console.log(`[Chat] Connecting to WebSocket (attempt ${attempt}):`, wsUrl.href);
 
     const ws = new WebSocket(wsUrl.href);
     wsRef.current = ws;
@@ -330,29 +339,68 @@ export default function ChatFixed() {
 
     ws.onerror = (error) => {
       console.error("WebSocket error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Lost connection to AI service. Check your internet and try again.",
-        variant: "destructive",
-      });
-      setIsStreaming(false);
-      setStreamingMessage("");
+      
+      // Retry on error if under max retries
+      if (attempt < MAX_RETRIES) {
+        ws.close();
+        connectWebSocket(conversationId, messageText, attempt + 1);
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Unable to connect to AI service after multiple attempts. Please try again later.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        setStreamingMessage("");
+        setRetryCount(0);
+      }
     };
 
     ws.onclose = (event) => {
       console.log("WebSocket connection closed", event.code, event.reason);
       
-      // Only show toast if unexpected close (not normal closure)
-      if (event.code !== 1000 && isStreaming) {
+      // Normal closure (1000) = success, don't retry
+      if (event.code === 1000 || !isStreaming) {
+        setRetryCount(0); // Reset retry count on successful completion
+        return;
+      }
+      
+      // Unexpected close - retry if under max attempts
+      if (attempt < MAX_RETRIES) {
+        connectWebSocket(conversationId, messageText, attempt + 1);
+      } else {
         toast({
-          title: "Connection Closed",
-          description: "Connection to AI service was interrupted. Please try sending your message again.",
+          title: "Connection Lost",
+          description: "Connection to AI service was interrupted after multiple retry attempts.",
           variant: "destructive",
         });
         setIsStreaming(false);
         setStreamingMessage("");
+        setRetryCount(0);
       }
     };
+  };
+
+  const handleSendMessage = async (messageOverride?: string) => {
+    const messageText = messageOverride || input;
+    if (!messageText.trim() || isStreaming) return;
+
+    setInput("");
+
+    let conversationId = selectedConversationId;
+    if (!conversationId) {
+      const newConv = await createConversationMutation.mutateAsync(
+        messageText.slice(0, 50),
+      );
+      conversationId = newConv.id;
+    }
+
+    setIsStreaming(true);
+    setStreamingMessage("");
+    setRetryCount(0);
+
+    // Start WebSocket connection with retry logic
+    await connectWebSocket(conversationId, messageText, 0);
   };
 
   const handleStopGeneration = () => {
