@@ -553,7 +553,7 @@ export default function ChatFixed() {
                     SaintSal
                   </div>
                   <div className="text-xs text-muted-foreground/70">
-                    Your Gotta Guy™
+                    Responsible Intelligence
                   </div>
                 </div>
               </div>
@@ -857,8 +857,8 @@ export default function ChatFixed() {
                   >
                     Cookin' Knowledge
                   </h1>
-                  <p className="text-sm sm:text-base text-accent font-medium">
-                    Your Gotta Guy™
+                  <p className="text-sm sm:text-base text-primary font-medium">
+                    Powered by SaintSal™
                   </p>
                   <p className="text-xs sm:text-sm text-muted-foreground px-4">
                     AI Chat • Web Search • Voice • Code Agent • Deep Research •

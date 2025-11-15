@@ -100,7 +100,7 @@ export function AppSidebar() {
             </div>
             <div>
               <div className="font-bold text-sm text-primary">SaintSal</div>
-              <div className="text-xs text-accent">Your Gotta Guy™</div>
+              <div className="text-xs text-accent">Responsible Intelligence</div>
             </div>
           </div>
         </Link>

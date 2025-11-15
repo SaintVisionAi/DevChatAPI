@@ -59,8 +59,8 @@ export default function Login() {
               <span className="text-primary-foreground font-bold text-2xl">CK</span>
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to Cookin' Knowledge</CardTitle>
-          <CardDescription>Your Gotta Guy™ for Everything</CardDescription>
+          <CardTitle className="text-2xl">Welcome to SaintSal™</CardTitle>
+          <CardDescription>Responsible Intelligence</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

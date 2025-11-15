@@ -94,7 +94,7 @@ export default function Register() {
             </div>
           </div>
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <CardDescription>Join Cookin' Knowledge - Your Gotta Guy™</CardDescription>
+          <CardDescription>Join SaintSal™ - Responsible Intelligence</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
