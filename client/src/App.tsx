@@ -76,7 +76,7 @@ function Router() {
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <ThemeToggle />
               </header>
-              <main className="flex-1 overflow-hidden">
+              <main className="flex-1 overflow-y-auto">
                 <Switch>
                   <Route path="/" component={Dashboard} />
                   <Route path="/dashboard" component={Dashboard} />
