@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code } from "lucide-react";
+import { Code, Menu, X } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export default function ApiDocs() {
   const { isAuthenticated } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const endpoints = [
     {
@@ -64,14 +67,16 @@ export default function ApiDocs() {
       {/* Navigation - only show for unauthenticated users */}
       {!isAuthenticated && (
         <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-primary font-bold text-lg">S</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-primary font-bold text-base sm:text-lg">S</span>
               </div>
-              <span className="font-semibold text-lg">SaintSal</span>
+              <span className="font-semibold text-base sm:text-lg">SaintSal</span>
             </div>
-            <div className="flex items-center gap-6">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-6">
               <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Home
               </Link>
@@ -84,6 +89,56 @@ export default function ApiDocs() {
               <Button size="sm" asChild>
                 <a href="/login">Sign In</a>
               </Button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          {/* Mobile Navigation Menu */}
+          <div
+            className={cn(
+              "md:hidden absolute top-full left-0 right-0 bg-background border-b border-border transition-all duration-300 ease-in-out",
+              mobileMenuOpen 
+                ? "max-h-screen opacity-100" 
+                : "max-h-0 opacity-0 overflow-hidden"
+            )}
+          >
+            <div className="px-3 py-4 space-y-3">
+              <Link 
+                href="/" 
+                className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link 
+                href="/pricing" 
+                className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link 
+                href="/docs" 
+                className="block px-3 py-2 text-sm text-foreground font-medium bg-muted/50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                API Docs
+              </Link>
+              <div className="pt-2">
+                <Button asChild className="w-full">
+                  <a href="/login">Sign In</a>
+                </Button>
+              </div>
             </div>
           </div>
         </nav>
