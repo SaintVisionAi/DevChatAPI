@@ -42,6 +42,7 @@ export const users = pgTable("users", {
   phone: varchar("phone"), // Phone number
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").default('viewer').notNull(),
+  organizationId: varchar("organization_id"), // For enterprise team members
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionStatus: varchar("subscription_status").default('free'),
@@ -173,10 +174,72 @@ export const insertApiRequestHistorySchema = createInsertSchema(apiRequestHistor
 export type InsertApiRequestHistory = z.infer<typeof insertApiRequestHistorySchema>;
 export type ApiRequestHistory = typeof apiRequestHistory.$inferSelect;
 
+// Organizations table - Enterprise team subscriptions
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  
+  // Subscription info
+  subscriptionTier: varchar("subscription_tier").default('enterprise').notNull(),
+  seatLimit: integer("seat_limit").default(5).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Organization members table
+export const organizationMembers = pgTable("organization_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: varchar("role").default('member').notNull(), // 'owner', 'admin', 'member'
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOrganizationMember = z.infer<typeof insertOrganizationMemberSchema>;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+
+// Verified domains table (max 5 per enterprise org)
+export const verifiedDomains = pgTable("verified_domains", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  domain: varchar("domain").notNull(),
+  isVerified: boolean("is_verified").default(false),
+  verificationToken: varchar("verification_token"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  verifiedAt: timestamp("verified_at"),
+});
+
+export const insertVerifiedDomainSchema = createInsertSchema(verifiedDomains).omit({
+  id: true,
+  createdAt: true,
+  verifiedAt: true,
+});
+
+export type InsertVerifiedDomain = z.infer<typeof insertVerifiedDomainSchema>;
+export type VerifiedDomain = typeof verifiedDomains.$inferSelect;
+
 // TEAM MEMORY SYSTEM - Shared organizational knowledge
 export const teamMemory = pgTable("team_memory", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"), // Future: multi-org support
+  organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: 'cascade' }),
   
   // Memory Content
   title: varchar("title").notNull(),
@@ -260,5 +323,37 @@ export const teamMemoryRelations = relations(teamMemory, ({ one }) => ({
   creator: one(users, {
     fields: [teamMemory.createdBy],
     references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [teamMemory.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [organizations.ownerId],
+    references: [users.id],
+  }),
+  members: many(organizationMembers),
+  verifiedDomains: many(verifiedDomains),
+  teamMemories: many(teamMemory),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationMembers.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [organizationMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const verifiedDomainsRelations = relations(verifiedDomains, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [verifiedDomains.organizationId],
+    references: [organizations.id],
   }),
 }));

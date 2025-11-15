@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,33 +7,9 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'stripe-pricing-table': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        'pricing-table-id': string;
-        'publishable-key': string;
-      };
-    }
-  }
-}
-
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/pricing-table.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
 
   const features = [
     {
@@ -142,11 +118,209 @@ export default function Pricing() {
             Protected by U.S. Patent #10,290,222
           </Badge>
           <h1 className="text-5xl font-bold mb-6" data-testid="text-pricing-title">
-            Simple, Transparent Pricing
+            Choose Your Intelligence Level
           </h1>
           <p className="text-xl text-muted-foreground mb-4">
-            Start with Starter at $27/mo, scale to Pro at $97/mo, or go Enterprise at $297/mo with 5 team seats
+            Free to start • $20 for unlimited • $97 for pro power • $297 for enterprise teams
           </p>
+        </div>
+      </section>
+      
+      {/* Pricing Tiers */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Free Tier */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-free">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Zap className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold">Free</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold">$0</span>
+                  <span className="text-muted-foreground">/forever</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Perfect for trying out SaintSal
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>100 messages per month</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Basic chat mode</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Standard response time</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Community support</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" asChild data-testid="button-get-started-free">
+                <Link href="/chat">Get Started</Link>
+              </Button>
+            </Card>
+
+            {/* Unlimited Starter - $20 */}
+            <Card className="relative p-6 flex flex-col border-border ring-2 ring-primary shadow-lg shadow-primary/20 hover-elevate" data-testid="card-pricing-starter">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground" data-testid="badge-popular">
+                Most Popular
+              </Badge>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Zap className="h-5 w-5 text-[#4DA6FF]" />
+                </div>
+                <h3 className="text-xl font-bold">Unlimited Starter</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold">$20</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Unlimited AI power for individuals
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Unlimited messages</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>All 5 AI modes (Chat, Search, Research, Code, Voice)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Voice conversations (ElevenLabs)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Image generation (DALL-E & Grok)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Extended memory system</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Priority support</span>
+                </li>
+              </ul>
+              <Button className="w-full" data-testid="button-upgrade-starter">
+                Upgrade to Starter
+              </Button>
+            </Card>
+
+            {/* Pro - $97 */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-pro">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Shield className="h-5 w-5 text-[#E6B325]" />
+                </div>
+                <h3 className="text-xl font-bold">Pro</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold">$97</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Advanced features for power users
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in Unlimited Starter</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>10x faster response times</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Advanced AI models</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Custom AI personalities</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>API access</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>White-glove support</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" data-testid="button-upgrade-pro">
+                Upgrade to Pro
+              </Button>
+            </Card>
+
+            {/* Enterprise - $297 */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-enterprise">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Users className="h-5 w-5 text-[#E6B325]" />
+                </div>
+                <h3 className="text-xl font-bold">Enterprise</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold">$297</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Complete solution for teams
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in Pro</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>5 team seats included</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Up to 5 verified domains</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Team memory (extended)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Shared knowledge base</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Admin dashboard</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>99.9% uptime SLA</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" data-testid="button-upgrade-enterprise">
+                Upgrade to Enterprise
+              </Button>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -168,16 +342,6 @@ export default function Pricing() {
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Stripe Pricing Table */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <stripe-pricing-table 
-            pricing-table-id="prctbl_1SIQItGVzsQbCDmmZ97ubwpM"
-            publishable-key="pk_live_51SGbmHGVzsQbCDmmc3GGBQKTrxEWfXJBw2wCZqPNJITuNcZdBI8uQa04BkWxBloqDq2fJmKuF2Z5o4MFO0o7uAJU009bQ0K6pw"
-          />
         </div>
       </section>
 
