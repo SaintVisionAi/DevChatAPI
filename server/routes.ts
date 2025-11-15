@@ -31,6 +31,21 @@ if (process.env.OPENAI_API_KEY) {
   });
 }
 
+// Helper to sanitize user data (exclude sensitive fields like passwordHash)
+function sanitizeUser(user: any) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    profileImageUrl: user.profileImageUrl,
+    role: user.role,
+    subscriptionStatus: user.subscriptionStatus,
+    stripeCustomerId: user.stripeCustomerId,
+  };
+}
+
 export async function registerRoutes(app: Express) {
   // ✅ SETUP SIMPLE EMAIL/PASSWORD AUTHENTICATION
   await setupSimpleAuth(app);
@@ -221,8 +236,11 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/admin/users", isAuthenticated, async (req: any, res: Response) => {
     try {
+      // TODO: Add role-based authorization check (admin only)
       const users = await storage.getAllUsers();
-      res.json(users);
+      // Sanitize user data to exclude passwordHash
+      const sanitizedUsers = users.map(user => sanitizeUser(user));
+      res.json(sanitizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).send("Failed to fetch users");
@@ -302,7 +320,8 @@ export async function registerRoutes(app: Express) {
       
       console.log("[PATCH /api/user/profile] Updated user:", updatedUser.id, updatedUser.firstName, updatedUser.lastName, updatedUser.phone);
       
-      res.json(updatedUser);
+      // Return safe user data (exclude passwordHash and other sensitive fields)
+      res.json(sanitizeUser(updatedUser));
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         console.error("[PATCH /api/user/profile] Validation error:", JSON.stringify(error.errors));
@@ -349,8 +368,9 @@ export async function registerRoutes(app: Express) {
       // Update user profile with image URL
       const updatedUser = await storage.updateUser(userId, { profileImageUrl });
       
+      // Return safe user data (exclude passwordHash)
       res.json({ 
-        user: updatedUser,
+        user: sanitizeUser(updatedUser),
         imageUrl: profileImageUrl 
       });
     } catch (error) {

@@ -173,6 +173,7 @@ export async function setupSimpleAuth(app: Express) {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
+      // Return safe user data (exclude passwordHash)
       res.json({
         id: user.id,
         email: user.email,
