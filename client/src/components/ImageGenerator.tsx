@@ -22,8 +22,10 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [model, setModel] = useState<"dalle" | "grok">("grok");
   const [size, setSize] = useState<"1024x1024" | "1792x1024" | "1024x1792">("1024x1024");
   const [quality, setQuality] = useState<"standard" | "hd">("standard");
+  const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16" | "1:1">("16:9");
   const { toast } = useToast();
 
   const handleGenerate = async () => {
@@ -38,11 +40,12 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
 
     setIsGenerating(true);
     try {
-      const response = await apiRequest("POST", "/api/images/dalle", {
-        prompt,
-        size,
-        quality,
-      });
+      const endpoint = model === "grok" ? "/api/images/grok" : "/api/images/dalle";
+      const payload = model === "grok" 
+        ? { prompt, aspectRatio }
+        : { prompt, size, quality };
+
+      const response = await apiRequest("POST", endpoint, payload);
 
       const data = await response.json();
 
@@ -52,7 +55,7 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
         
         toast({
           title: "Image generated!",
-          description: "Your masterpiece is ready",
+          description: `Your ${model === "grok" ? "Grok Aurora" : "DALL-E 3"} masterpiece is ready`,
         });
       }
     } catch (error: any) {
@@ -103,9 +106,11 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Wand2 className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-semibold text-lg">AI Image Generator</h3>
-            <p className="text-sm text-muted-foreground">Create stunning visuals with DALL-E 3</p>
+            <p className="text-sm text-muted-foreground">
+              {model === "grok" ? "Powered by Grok Aurora" : "Powered by DALL-E 3"}
+            </p>
           </div>
         </div>
 
@@ -120,35 +125,65 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
             data-testid="input-image-prompt"
           />
 
-          {/* Settings */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Size</label>
-              <Select value={size} onValueChange={(v: any) => setSize(v)} disabled={isGenerating}>
-                <SelectTrigger data-testid="select-image-size">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1024x1024">Square (1024×1024)</SelectItem>
-                  <SelectItem value="1792x1024">Landscape (1792×1024)</SelectItem>
-                  <SelectItem value="1024x1792">Portrait (1024×1792)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Quality</label>
-              <Select value={quality} onValueChange={(v: any) => setQuality(v)} disabled={isGenerating}>
-                <SelectTrigger data-testid="select-image-quality">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="hd">HD (Premium)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Model Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">AI Model</label>
+            <Select value={model} onValueChange={(v: any) => setModel(v)} disabled={isGenerating}>
+              <SelectTrigger data-testid="select-image-model">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="grok">Grok Aurora (Fast)</SelectItem>
+                <SelectItem value="dalle">DALL-E 3 (Premium)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Settings - Conditional based on model */}
+          {model === "dalle" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Size</label>
+                <Select value={size} onValueChange={(v: any) => setSize(v)} disabled={isGenerating}>
+                  <SelectTrigger data-testid="select-image-size">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1024x1024">Square (1024×1024)</SelectItem>
+                    <SelectItem value="1792x1024">Landscape (1792×1024)</SelectItem>
+                    <SelectItem value="1024x1792">Portrait (1024×1792)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quality</label>
+                <Select value={quality} onValueChange={(v: any) => setQuality(v)} disabled={isGenerating}>
+                  <SelectTrigger data-testid="select-image-quality">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="hd">HD (Premium)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Aspect Ratio</label>
+              <Select value={aspectRatio} onValueChange={(v: any) => setAspectRatio(v)} disabled={isGenerating}>
+                <SelectTrigger data-testid="select-aspect-ratio">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="16:9">Landscape (16:9)</SelectItem>
+                  <SelectItem value="9:16">Portrait (9:16)</SelectItem>
+                  <SelectItem value="1:1">Square (1:1)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Generate Button */}
           <Button
