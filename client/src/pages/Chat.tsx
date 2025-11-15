@@ -48,7 +48,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { ImageGenerator } from "@/components/ImageGenerator";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
 type ChatMode = "chat" | "search" | "research" | "code" | "voice";
 
@@ -837,6 +837,67 @@ export default function ChatFixed() {
             </Button>
           </div>
         </header>
+
+        {/* Quick Mode Switcher */}
+        <div className="border-b border-border bg-background/80 backdrop-blur-sm px-3 sm:px-6 py-2">
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+            <Link href="/chat">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2 bg-primary/10 text-primary"
+                data-testid="link-chat-mode"
+              >
+                <MessageSquare className="h-4 w-4 mr-1.5" />
+                Chat
+              </Button>
+            </Link>
+            <Link href="/voice">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2"
+                data-testid="link-voice-mode"
+              >
+                <Mic className="h-4 w-4 mr-1.5" />
+                Voice
+              </Button>
+            </Link>
+            <Link href="/images">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 hover-elevate active-elevate-2"
+                data-testid="link-images-mode"
+              >
+                <Wand2 className="h-4 w-4 mr-1.5" />
+                Images
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="shrink-0 opacity-50"
+              data-testid="button-search-mode-soon"
+            >
+              <Search className="h-4 w-4 mr-1.5" />
+              Search
+              <Badge variant="outline" className="ml-1.5 text-xs">Soon</Badge>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="shrink-0 opacity-50"
+              data-testid="button-code-mode-soon"
+            >
+              <Code2 className="h-4 w-4 mr-1.5" />
+              Code
+              <Badge variant="outline" className="ml-1.5 text-xs">Soon</Badge>
+            </Button>
+          </div>
+        </div>
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
