@@ -1,5 +1,4 @@
 // Grok AI API integration (X.AI)
-import type { WebSocket } from 'ws';
 
 interface GrokMessage {
   role: 'system' | 'user' | 'assistant';
@@ -11,6 +10,11 @@ interface GrokOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+}
+
+// WebSocket interface for type safety
+interface WebSocketLike {
+  send(data: string): void;
 }
 
 export class GrokProvider {
@@ -30,7 +34,7 @@ export class GrokProvider {
    */
   async streamChat(
     messages: GrokMessage[],
-    ws: WebSocket,
+    ws: WebSocketLike,
     options: GrokOptions = {}
   ): Promise<string> {
     if (!this.apiKey) {
