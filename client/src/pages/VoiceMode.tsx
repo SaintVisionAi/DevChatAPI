@@ -363,7 +363,7 @@ export default function VoiceMode() {
                     : "text-muted-foreground"
                 }`}
               >
-                {format(new Date(message.createdAt), "h:mm a")}
+                {message.createdAt && format(new Date(message.createdAt), "h:mm a")}
               </div>
             </Card>
 

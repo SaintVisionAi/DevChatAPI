@@ -36,6 +36,7 @@ import {
   MoreVertical,
   Home,
   ArrowLeft,
+  Wand2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1026,7 +1027,7 @@ export default function ChatFixed() {
                                   Sources:
                                 </div>
                                 <div className="space-y-1.5">
-                                  {(message.searchResults as string[]).map(
+                                  {(message.searchResults as unknown as string[]).map(
                                     (citation: string, idx: number) => (
                                       <div
                                         key={idx}
