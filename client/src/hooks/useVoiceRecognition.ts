@@ -61,9 +61,14 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       let interimTranscript = '';
       let finalTranscript = finalTranscriptRef.current;
 
+      console.log('[VoiceRecognition] onresult event, resultIndex:', event.resultIndex, 'total results:', event.results.length);
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
+        const isFinal = event.results[i].isFinal;
+        console.log('[VoiceRecognition] Result', i, ':', transcript, '| isFinal:', isFinal);
+        
+        if (isFinal) {
           finalTranscript += transcript + ' ';
         } else {
           interimTranscript += transcript;
@@ -71,6 +76,9 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       }
 
       finalTranscriptRef.current = finalTranscript;
+
+      const combinedText = finalTranscript.trim() || interimTranscript.trim();
+      console.log('[VoiceRecognition] Combined text:', combinedText);
 
       setState(prev => ({
         ...prev,
@@ -81,7 +89,8 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       // Callback with transcript
       if (onTranscript) {
         const isFinal = event.results[event.results.length - 1].isFinal;
-        onTranscript(finalTranscript.trim() || interimTranscript.trim(), isFinal);
+        console.log('[VoiceRecognition] Calling onTranscript callback with:', combinedText, '| isFinal:', isFinal);
+        onTranscript(combinedText, isFinal);
       }
     };
 

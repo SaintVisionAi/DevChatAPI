@@ -185,7 +185,7 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       const conversation = await storage.createConversation({
         userId: ws.userId,
         title: userMessage.substring(0, 100),
-        model: model || 'gpt-4o-mini',
+        model: model || 'gpt-5',
         mode: mode || 'chat',
       });
       conversationId = conversation.id;
@@ -392,11 +392,9 @@ async function handleChatMessage(ws: AuthenticatedSocket, message: any) {
       }
 
       // Map UI model names to OpenAI API model names
-      let openaiModel = "gpt-4o-mini"; // Default
+      let openaiModel = "gpt-4o"; // Default to GPT-4o (best available as GPT-5 proxy)
       if (model.includes("gpt-5")) {
-        openaiModel = "gpt-4o"; // Use GPT-4o as fallback for GPT-5
-      } else if (model.includes("gpt-4o")) {
-        openaiModel = "gpt-4o-mini";
+        openaiModel = "gpt-4o"; // Use GPT-4o as GPT-5 (OpenAI's best model)
       } else if (model.includes("gpt-4")) {
         openaiModel = "gpt-4-turbo-preview";
       }

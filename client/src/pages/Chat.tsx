@@ -44,6 +44,7 @@ import type { User, Conversation, Message } from "@shared/schema";
 import { format } from "date-fns";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalkieTalkieButton } from "@/components/WalkieTalkieButton";
+import { LiveVoiceChat } from "@/components/LiveVoiceChat";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -64,7 +65,7 @@ export default function ChatFixed() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [selectedModel, setSelectedModel] = useState("gpt-5");
   const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -296,9 +297,17 @@ export default function ChatFixed() {
   };
 
   const handleVoiceTranscript = (transcript: string) => {
-    if (!transcript.trim()) return;
+    console.log('[Chat] Voice transcript received:', transcript);
+    if (!transcript.trim()) {
+      console.log('[Chat] Transcript is empty, skipping');
+      return;
+    }
+    console.log('[Chat] Setting input and sending message:', transcript);
     setInput(transcript);
-    setTimeout(() => handleSendMessage(transcript), 100);
+    setTimeout(() => {
+      console.log('[Chat] Calling handleSendMessage with:', transcript);
+      handleSendMessage(transcript);
+    }, 100);
   };
 
   const handleNewChat = () => {
@@ -604,7 +613,6 @@ export default function ChatFixed() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
-                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
                 <SelectItem value="gpt-5">GPT-5</SelectItem>
               </SelectContent>
             </Select>
@@ -623,7 +631,22 @@ export default function ChatFixed() {
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {showEmptyState ? (
+          {selectedMode === 'voice' ? (
+            /* Live Voice Chat Interface */
+            <LiveVoiceChat
+              conversationId={selectedConversationId}
+              onTranscript={handleVoiceTranscript}
+              isStreaming={isStreaming}
+              streamingMessage={streamingMessage}
+              selectedModel={selectedModel}
+              onCreateConversation={async () => {
+                if (!selectedConversationId) {
+                  const newConv = await createConversationMutation.mutateAsync("Voice Conversation");
+                  setSelectedConversationId(newConv.id);
+                }
+              }}
+            />
+          ) : showEmptyState ? (
             /* Empty State */
             <div className="h-full flex flex-col items-center justify-center px-4 sm:px-6">
               <div className="max-w-2xl w-full text-center space-y-4 sm:space-y-6">
@@ -807,22 +830,21 @@ export default function ChatFixed() {
 
         {/* Combined Input & Mode Selector - MOBILE OPTIMIZED */}
         <div className="border-t border-border bg-background backdrop-blur-sm shrink-0 safe-bottom">
-          {/* Mode Selector - Hidden on empty state, shown when chatting */}
-          {!showEmptyState && (
-            <div className="border-b border-border bg-muted/5">
-              <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1 sm:py-2">
-                <ModeSelector
-                  currentMode={selectedMode}
-                  onModeChange={setSelectedMode}
-                  disabled={isStreaming}
-                  className="scale-75 sm:scale-100 origin-center"
-                />
-              </div>
+          {/* Mode Selector - Always visible */}
+          <div className="border-b border-border bg-muted/5">
+            <div className="max-w-3xl mx-auto px-2 sm:px-6 py-1 sm:py-2">
+              <ModeSelector
+                currentMode={selectedMode}
+                onModeChange={setSelectedMode}
+                disabled={isStreaming}
+                className="scale-75 sm:scale-100 origin-center"
+              />
             </div>
-          )}
+          </div>
           
-          {/* Modern Message Input Area */}
-          <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 sm:py-4">
+          {/* Modern Message Input Area - Hidden in Voice Mode */}
+          {selectedMode !== 'voice' && (
+            <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 sm:py-4">
             {/* Selected Image Preview */}
             {selectedImage && (
               <div className="mb-3 relative inline-block">
@@ -927,6 +949,7 @@ export default function ChatFixed() {
               <span>Shift + Enter for new line</span>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

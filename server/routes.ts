@@ -359,25 +359,31 @@ export async function registerRoutes(app: Express) {
     try {
       const { text, voiceId } = req.body;
       
+      console.log('[TTS] Request received:', { textLength: text?.length, voiceId });
+      
       if (!text) {
+        console.error('[TTS] ❌ No text provided');
         return res.status(400).json({ message: "Text is required" });
       }
 
       const { elevenLabs } = await import("./providers/elevenlabs");
       
       if (!elevenLabs.isAvailable()) {
-        return res.status(503).json({ message: "Text-to-speech service not available" });
+        console.error('[TTS] ❌ ElevenLabs not available - API key missing?');
+        return res.status(503).json({ message: "ElevenLabs API key not configured" });
       }
 
+      console.log('[TTS] ✅ Calling ElevenLabs API...');
       const audioBuffer = await elevenLabs.textToSpeech(text, { 
         voiceId: voiceId || "21m00Tcm4TlvDq8ikWAM" 
       });
       
+      console.log('[TTS] ✅ Audio generated, size:', audioBuffer.length, 'bytes');
       res.setHeader("Content-Type", "audio/mpeg");
       res.send(audioBuffer);
     } catch (error) {
-      console.error("TTS error:", error);
-      res.status(500).json({ message: "Failed to generate speech" });
+      console.error("[TTS] ❌ Fatal error:", error);
+      res.status(500).json({ message: "Failed to generate speech: " + (error as Error).message });
     }
   });
 

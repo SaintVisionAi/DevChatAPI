@@ -253,7 +253,7 @@ export class AIOrchestrator {
 
     // First get text response from AI model
     let textResponse = '';
-    const model = options.model || 'gpt-4o-mini';
+    const model = options.model || 'gpt-5';
     
     if (model.includes('claude')) {
       textResponse = await this.handleClaude(messages, ws, options);
