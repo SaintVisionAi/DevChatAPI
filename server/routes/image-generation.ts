@@ -1,21 +1,17 @@
 // Image generation routes - DALL-E and Gemini
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { isAuthenticated } from '../simple-auth';
 
 const router = Router();
 
 // Generate image with DALL-E (OpenAI)
-router.post('/dalle', async (req: Request, res: Response) => {
+router.post('/dalle', isAuthenticated, async (req: any, res: Response) => {
   try {
     const { prompt, size = '1024x1024', quality = 'standard' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    // Check if user is authenticated
-    if (!(req as any).user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // Import OpenAI
@@ -62,17 +58,12 @@ router.post('/dalle', async (req: Request, res: Response) => {
 });
 
 // Generate image with Grok (xAI Aurora)
-router.post('/grok', async (req: Request, res: Response) => {
+router.post('/grok', isAuthenticated, async (req: any, res: Response) => {
   try {
     const { prompt, aspectRatio = '16:9' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    // Check if user is authenticated
-    if (!(req as any).user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
@@ -130,17 +121,12 @@ router.post('/grok', async (req: Request, res: Response) => {
 });
 
 // Generate image with Gemini
-router.post('/gemini', async (req: Request, res: Response) => {
+router.post('/gemini', isAuthenticated, async (req: any, res: Response) => {
   try {
     const { prompt } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    // Check if user is authenticated
-    if (!(req as any).user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // Import Gemini provider
