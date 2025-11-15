@@ -1,7 +1,7 @@
 # SaintSal™ - Responsible Intelligence
 
 ## Overview
-SaintSal™ is an enterprise-grade AI platform focused on delivering "Responsible Intelligence" through advanced conversational AI, powered by Cookin' Knowledge™. It holds U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments. The platform aims to be the AI equivalent of an elite executive and technical advisor across all domains, operating with integrity, accuracy, ethics, and transparency. Key capabilities include an extended memory system for personalized and team knowledge, multi-mode chat (Chat, Web Search, Deep Research, Code Agent, Voice), and a mobile-first, PWA-optimized design with a premium Apple-level aesthetic. The project seeks to monetize through a tiered subscription model (Free, Pro, Enterprise) integrated with Stripe.
+SaintSal™ is an enterprise-grade AI platform focused on delivering "Responsible Intelligence" through advanced conversational AI, powered by Cookin' Knowledge™. It holds U.S. Patent #10,290,222 for escalation/de-escalation in virtual environments. The platform aims to be the AI equivalent of an elite executive and technical advisor across all domains, operating with integrity, accuracy, ethics, and transparency. Key capabilities include an extended memory system for personalized and team knowledge, multi-mode chat (Chat, Web Search, Deep Research, Code Agent, Voice), and a mobile-first, PWA-optimized design with a premium Apple-level aesthetic. The platform monetizes through a 4-tier subscription model: Free (100 msgs/month), Unlimited Starter ($20/mo unlimited), Pro ($97/mo advanced features), and Enterprise ($297/mo with 5 team seats and up to 5 verified domains).
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -38,6 +38,45 @@ The platform features an "Apple-level" design with a clean, minimal viewport, pu
 
 ### Payment Processing
 - **Stripe**: Customer billing, subscription management, and pricing tables.
+
+## Subscription Tiers
+
+### Free Tier ($0/forever)
+- 100 messages per month
+- Basic chat mode
+- Standard response time
+- Community support
+
+### Unlimited Starter ($20/month)
+- Unlimited messages
+- All 5 AI modes (Chat, Search, Research, Code, Voice)
+- Voice conversations with ElevenLabs
+- Image generation (DALL-E & Grok Aurora)
+- Extended memory system
+- Priority support
+- Early access to new features
+
+### Pro ($97/month)
+- Everything in Unlimited Starter
+- 10x faster response times
+- Advanced AI models
+- Custom AI personalities
+- API access
+- Unlimited image generation
+- Priority voice processing
+- White-glove support
+
+### Enterprise ($297/month)
+- Everything in Pro
+- 5 team seats included
+- Up to 5 verified domains
+- Team memory (extended organizational knowledge)
+- Shared knowledge base
+- Admin dashboard
+- SSO integration
+- Dedicated account manager
+- Custom contracts
+- 99.9% uptime SLA
 
 ### Business Integrations
 - **GoHighLevel CRM**: Contact management and workflow automation.
