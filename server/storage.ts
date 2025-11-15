@@ -35,6 +35,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User>;
 
   // Conversations
   createConversation(data: InsertConversation): Promise<Conversation>;
@@ -122,6 +123,19 @@ export class DbStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return user;
+  }
+
+  async updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error('User not found');
+    }
+    return updated;
   }
 
   // Conversations

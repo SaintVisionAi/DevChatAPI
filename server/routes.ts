@@ -280,6 +280,39 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // User Profile Routes (protected by isAuthenticated)
+  const profileUpdateSchema = z.object({
+    firstName: z.string().min(1, "First name is required").max(100),
+    lastName: z.string().min(1, "Last name is required").max(100),
+    phone: z.string().regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format").min(10, "Phone must be at least 10 characters").max(20),
+  }).strict(); // Ensure no extra fields are sent
+
+  app.patch("/api/user/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      console.log("[PATCH /api/user/profile] Request body:", JSON.stringify(req.body));
+      
+      // Validate request body
+      const validatedData = profileUpdateSchema.parse(req.body);
+      
+      console.log("[PATCH /api/user/profile] Validated data:", JSON.stringify(validatedData));
+
+      const updatedUser = await storage.updateUser(userId, validatedData);
+      
+      console.log("[PATCH /api/user/profile] Updated user:", updatedUser.id, updatedUser.firstName, updatedUser.lastName, updatedUser.phone);
+      
+      res.json(updatedUser);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        console.error("[PATCH /api/user/profile] Validation error:", JSON.stringify(error.errors));
+        return res.status(400).json({ message: "Validation failed", errors: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // File Upload Routes
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -287,6 +320,43 @@ export async function registerRoutes(app: Express) {
       fileSize: 10 * 1024 * 1024, // 10MB limit
       files: 5, // Max 5 files at once
     },
+  });
+
+  // Profile Image Upload (protected by isAuthenticated)
+  app.post("/api/user/profile-image", isAuthenticated, upload.single("image"), async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No image provided" });
+      }
+
+      // Validate image type
+      if (!req.file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "File must be an image" });
+      }
+
+      // Process image and get base64
+      const processedFile = await fileProcessor.processFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Create data URL for profile image
+      const profileImageUrl = `data:${req.file.mimetype};base64,${processedFile.base64}`;
+
+      // Update user profile with image URL
+      const updatedUser = await storage.updateUser(userId, { profileImageUrl });
+      
+      res.json({ 
+        user: updatedUser,
+        imageUrl: profileImageUrl 
+      });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
   });
 
   // File Upload Routes (protected by isAuthenticated)

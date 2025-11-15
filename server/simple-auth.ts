@@ -178,7 +178,11 @@ export async function setupSimpleAuth(app: Express) {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phone: user.phone,
+        profileImageUrl: user.profileImageUrl,
         role: user.role,
+        subscriptionStatus: user.subscriptionStatus,
+        stripeCustomerId: user.stripeCustomerId,
       });
     } catch (error) {
       console.error("Get user error:", error);
