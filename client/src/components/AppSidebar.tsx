@@ -9,6 +9,8 @@ import {
   Shield,
   ChevronDown,
   LogOut,
+  Mic,
+  Wand2,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -44,6 +46,16 @@ const mainNavigation = [
     title: "Chat",
     url: "/chat",
     icon: MessageSquare,
+  },
+  {
+    title: "Voice Mode",
+    url: "/voice",
+    icon: Mic,
+  },
+  {
+    title: "Image Generator",
+    url: "/images",
+    icon: Wand2,
   },
   {
     title: "Playground",
