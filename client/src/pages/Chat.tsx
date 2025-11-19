@@ -1273,7 +1273,6 @@ export default function ChatFixed() {
               <span>Shift + Enter for new line</span>
             </div>
           </div>
-          )}
         </div>
 
         {/* Image Generator Modal */}
