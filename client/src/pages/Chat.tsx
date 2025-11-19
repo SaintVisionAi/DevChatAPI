@@ -1235,8 +1235,9 @@ export default function ChatFixed() {
                 {/* Voice Button */}
                 <WalkieTalkieButton
                   onTranscript={handleVoiceTranscript}
-                  className="h-10 w-10 shrink-0 self-end"
+                  className="h-11 w-11 sm:h-10 sm:w-10 shrink-0 self-end"
                   disabled={isStreaming}
+                  data-testid="button-voice"
                 />
 
                 {/* Send Button */}
@@ -1277,11 +1278,11 @@ export default function ChatFixed() {
 
         {/* Image Generator Modal */}
         {showImageGenerator && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-border flex items-center justify-between">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Sparkles className="h-6 w-6 text-primary" />
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between shrink-0">
+                <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   AI Image Generator
                 </h2>
                 <Button
@@ -1289,11 +1290,12 @@ export default function ChatFixed() {
                   size="icon"
                   onClick={() => setShowImageGenerator(false)}
                   className="rounded-full"
+                  data-testid="button-close-image-generator"
                 >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <div className="p-6">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                 <ImageGenerator onImageGenerated={handleImageGenerated} />
               </div>
             </div>

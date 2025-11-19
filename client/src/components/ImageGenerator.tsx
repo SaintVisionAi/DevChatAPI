@@ -209,20 +209,22 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
         {/* Generated Image Preview */}
         {generatedImage && (
           <div className="space-y-3 animate-fade-in">
-            <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-lg">
+            <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-lg bg-muted/20">
               <img
                 src={generatedImage}
                 alt="Generated"
-                className="w-full h-auto transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-auto max-h-[60vh] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
+                data-testid="generated-image"
               />
               
               {/* Image Overlay Actions */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                 <Button
                   variant="secondary"
                   size="lg"
                   onClick={handleDownload}
-                  className="gap-2"
+                  className="gap-2 shadow-xl"
                   data-testid="button-download-image"
                 >
                   <Download className="w-4 h-4" />
@@ -232,7 +234,7 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
                   variant="destructive"
                   size="lg"
                   onClick={() => setGeneratedImage(null)}
-                  className="gap-2"
+                  className="gap-2 shadow-xl"
                   data-testid="button-clear-image"
                 >
                   <X className="w-4 h-4" />
@@ -247,6 +249,7 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
                 variant="outline"
                 onClick={handleDownload}
                 className="flex-1 gap-2"
+                data-testid="button-download-image-mobile"
               >
                 <Download className="w-4 h-4" />
                 Download
@@ -255,6 +258,7 @@ export function ImageGenerator({ onImageGenerated, className }: ImageGeneratorPr
                 variant="outline"
                 onClick={() => setGeneratedImage(null)}
                 className="flex-1 gap-2"
+                data-testid="button-clear-image-mobile"
               >
                 <X className="w-4 h-4" />
                 Clear
