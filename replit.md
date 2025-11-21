@@ -6,6 +6,14 @@ SaintSal™ is an enterprise-grade AI platform focused on delivering "Responsibl
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Build Process (CRITICAL)
+**Path Mismatch Issue Resolved:**
+- Vite build outputs to: `dist/public/` (configured in vite.config.ts)
+- Express server serves from: `server/public/` (hardcoded in server/vite.ts - protected file)
+- **Required step after every build:** `cp -r dist/public/* server/public/` 
+- Use build script: `npm run build:deploy` which handles both steps automatically
+- Without this copy step, server serves stale builds causing 404 errors on new routes
+
 ## System Architecture
 
 ### Frontend Architecture
