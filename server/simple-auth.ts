@@ -18,6 +18,8 @@ export const sessionStore = new pgStore({
 
 export function getSession() {
   const isProduction = process.env.NODE_ENV === "production" || process.env.REPL_ID;
+  const isReplit = !!process.env.REPL_ID;
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -25,8 +27,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction, // Secure cookies in production
-      sameSite: isProduction ? "strict" : "lax",
+      secure: isProduction && !isReplit, // Auto in Replit, explicit elsewhere
+      sameSite: "lax", // Changed from strict to lax for better compatibility
       maxAge: sessionTtl,
     },
   });
