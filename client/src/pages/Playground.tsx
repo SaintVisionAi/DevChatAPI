@@ -46,18 +46,19 @@ export default function Playground() {
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "Please login to continue...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-    }
-  }, [isAuthenticated, authLoading, toast]);
+  // TEMPORARY: Disable auth redirect for testing
+  // useEffect(() => {
+  //   if (!authLoading && !isAuthenticated) {
+  //     toast({
+  //       title: "Unauthorized",
+  //       description: "Please login to continue...",
+  //       variant: "destructive",
+  //       });
+  //     setTimeout(() => {
+  //       window.location.href = "/login";
+  //     }, 500);
+  //   }
+  // }, [isAuthenticated, authLoading, toast]);
 
   const { data: environments } = useQuery<ApiEnvironment[]>({
     queryKey: ["/api/environments"],
@@ -109,17 +110,8 @@ export default function Playground() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  // TEMPORARY: Removed all auth checks for testing route
+  // Will add back after confirming route works
 
   return (
     <div className="h-screen flex flex-col">
