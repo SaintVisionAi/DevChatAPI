@@ -120,9 +120,23 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
     };
   }, [continuous, interimResults, lang, onTranscript, onError, state.isSupported]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!state.isSupported) {
       const errorMsg = 'Speech recognition not supported in this browser';
+      setState(prev => ({ ...prev, error: errorMsg }));
+      if (onError) onError(errorMsg);
+      return;
+    }
+
+    // Request microphone permission explicitly
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[VoiceRecognition] ✅ Microphone access granted');
+      // Stop the stream immediately - we just needed the permission
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+      const errorMsg = 'Microphone permission denied. Please allow microphone access.';
+      console.error('[VoiceRecognition] ❌ Microphone permission error:', err);
       setState(prev => ({ ...prev, error: errorMsg }));
       if (onError) onError(errorMsg);
       return;
@@ -132,9 +146,13 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       finalTranscriptRef.current = '';
       setState(prev => ({ ...prev, transcript: '', interimTranscript: '', error: null }));
       try {
+        console.log('[VoiceRecognition] 🎤 Starting speech recognition...');
         recognitionRef.current.start();
       } catch (error) {
-        console.error('Error starting recognition:', error);
+        console.error('[VoiceRecognition] ❌ Error starting recognition:', error);
+        const errorMsg = `Failed to start: ${error}`;
+        setState(prev => ({ ...prev, error: errorMsg }));
+        if (onError) onError(errorMsg);
       }
     }
   }, [state.isSupported, state.isListening, onError]);
