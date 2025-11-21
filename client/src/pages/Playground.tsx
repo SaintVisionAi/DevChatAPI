@@ -78,8 +78,9 @@ export default function Playground() {
       return { result, responseTime: endTime - startTime };
     },
     onSuccess: ({ result, responseTime }) => {
-      setResponse(JSON.stringify(result.data, null, 2));
-      setStatusCode(result.status);
+      const typedResult = result as any;
+      setResponse(JSON.stringify(typedResult.data, null, 2));
+      setStatusCode(typedResult.status);
       setResponseTime(responseTime);
     },
     onError: (error: Error) => {

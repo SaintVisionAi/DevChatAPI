@@ -46,59 +46,32 @@ function Router() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <Switch>
-        {/* Public routes */}
-        <Route path="/" component={Landing} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/pricing" component={Pricing} />
-        <Route path="/docs" component={ApiDocs} />
-        <Route path="/legal/terms" component={Terms} />
-        <Route path="/legal/privacy" component={Privacy} />
-        <Route path="/legal/baa" component={Baa} />
-        <Route component={NotFound} />
-      </Switch>
-    );
-  }
-
+  // Unified routing for both authenticated and unauthenticated users
   return (
     <Switch>
-      {/* Full-screen pages without sidebar */}
+      {/* Public routes - accessible to everyone */}
+      <Route path="/" component={isAuthenticated ? Dashboard : Landing} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/docs" component={ApiDocs} />
+      <Route path="/legal/terms" component={Terms} />
+      <Route path="/legal/privacy" component={Privacy} />
+      <Route path="/legal/baa" component={Baa} />
+
+      {/* Full-screen pages (no sidebar) */}
       <Route path="/chat" component={Chat} />
       <Route path="/voice" component={VoiceMode} />
       <Route path="/images" component={ImageGenPage} />
-      
-      {/* All other routes with sidebar layout */}
-      <Route>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 min-w-0">
-              <header className="flex items-center justify-between h-16 px-6 border-b border-border">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <ThemeToggle />
-              </header>
-              <main className="flex-1 overflow-y-auto">
-                <Switch>
-                  <Route path="/" component={Dashboard} />
-                  <Route path="/dashboard" component={Dashboard} />
-                  <Route path="/playground" component={Playground} />
-                  <Route path="/settings" component={Settings} />
-                  <Route path="/pricing" component={Pricing} />
-                  <Route path="/docs" component={ApiDocs} />
-                  <Route path="/admin" component={Admin} />
-                  <Route path="/legal/terms" component={Terms} />
-                  <Route path="/legal/privacy" component={Privacy} />
-                  <Route path="/legal/baa" component={Baa} />
-                  <Route component={NotFound} />
-                </Switch>
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
-      </Route>
+
+      {/* Protected pages - component handles redirect if not authenticated */}
+      <Route path="/playground" component={Playground} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={Admin} />
+
+      {/* 404 catch-all */}
+      <Route component={NotFound} />
     </Switch>
   );
 }
