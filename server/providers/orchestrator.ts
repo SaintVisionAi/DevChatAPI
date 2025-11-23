@@ -112,7 +112,7 @@ export class AIOrchestrator {
     }));
 
     const result = await perplexity.search(perplexityMessages, {
-      model: 'llama-3.1-sonar-large-128k-online',
+      model: 'sonar-pro',
       temperature: 0.2,
       searchRecencyFilter: 'month',
       returnRelatedQuestions: true,
@@ -253,14 +253,16 @@ export class AIOrchestrator {
 
     // First get text response from AI model
     let textResponse = '';
-    const model = options.model || 'gpt-4o-mini';
+    const model = options.model || 'gpt-5';
     
-    if (model.includes('claude')) {
-      textResponse = await this.handleClaude(messages, ws, options);
+    if (model.includes('grok')) {
+      textResponse = await this.handleGrok(messages, ws, voiceOptions);
+    } else if (model.includes('claude')) {
+      textResponse = await this.handleClaude(messages, ws, voiceOptions);
     } else if (model.includes('gemini')) {
-      textResponse = await this.handleGemini(messages, ws, options);
+      textResponse = await this.handleGemini(messages, ws, voiceOptions);
     } else {
-      textResponse = await this.handleOpenAI(messages, ws, options);
+      textResponse = await this.handleOpenAI(messages, ws, voiceOptions);
     }
 
     // Then convert to speech
@@ -270,8 +272,8 @@ export class AIOrchestrator {
     }));
 
     const audioBuffer = await elevenLabs.textToSpeech(textResponse, {
-      voice: options.voiceSettings?.voice || 'nova',
-      model: 'eleven_turbo_v2',
+      voiceId: options.voiceSettings?.voiceId || '21m00Tcm4TlvDq8ikWAM',
+      modelId: 'eleven_turbo_v2',
       voiceSettings: {
         stability: options.voiceSettings?.stability || 0.75,
         similarityBoost: options.voiceSettings?.similarityBoost || 0.75,

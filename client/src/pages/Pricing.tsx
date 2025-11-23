@@ -1,32 +1,15 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Shield, Users, Zap } from "lucide-react";
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'stripe-pricing-table': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        'pricing-table-id': string;
-        'publishable-key': string;
-      };
-    }
-  }
-}
+import { Button } from "@/components/ui/button";
+import { Check, Shield, Users, Zap, Menu, X } from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export default function Pricing() {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/pricing-table.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
+  const { isAuthenticated } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
     {
@@ -48,18 +31,299 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Navigation - only show for unauthenticated users */}
+      {!isAuthenticated && (
+        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-primary font-bold text-base sm:text-lg">S</span>
+              </div>
+              <span className="font-semibold text-base sm:text-lg">
+                <span className="text-foreground">Saint</span>
+                <span className="text-accent">Sal</span>
+                <span className="text-foreground text-[10px] align-top">™</span>
+              </span>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-6">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Home
+              </Link>
+              <Link href="/pricing" className="text-sm text-foreground font-medium">
+                Pricing
+              </Link>
+              <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                API Docs
+              </Link>
+              <Button size="sm" asChild>
+                <a href="/login">Sign In</a>
+              </Button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          {/* Mobile Navigation Menu */}
+          <div
+            className={cn(
+              "md:hidden absolute top-full left-0 right-0 bg-background border-b border-border transition-all duration-300 ease-in-out",
+              mobileMenuOpen 
+                ? "max-h-screen opacity-100" 
+                : "max-h-0 opacity-0 overflow-hidden"
+            )}
+          >
+            <div className="px-3 py-4 space-y-3">
+              <Link 
+                href="/" 
+                className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link 
+                href="/pricing" 
+                className="block px-3 py-2 text-sm text-foreground font-medium bg-muted/50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link 
+                href="/docs" 
+                className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                API Docs
+              </Link>
+              <div className="pt-2">
+                <Button asChild className="w-full">
+                  <a href="/login">Sign In</a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Header */}
-      <section className="py-20 px-6 border-b border-border">
+      <section className={`py-20 px-6 border-b border-border ${!isAuthenticated ? 'pt-32' : ''}`}>
         <div className="max-w-4xl mx-auto text-center">
           <Badge variant="outline" className="mb-4 border-primary/30">
             Protected by U.S. Patent #10,290,222
           </Badge>
           <h1 className="text-5xl font-bold mb-6" data-testid="text-pricing-title">
-            Simple, Transparent Pricing
+            Choose Your Intelligence Level
           </h1>
           <p className="text-xl text-muted-foreground mb-4">
-            Start with Starter at $27/mo, scale to Pro at $97/mo, or go Enterprise at $297/mo with 5 team seats
+            Free to start • $20 for unlimited • $97 for pro power • Custom pricing for enterprise teams
           </p>
+        </div>
+      </section>
+      
+      {/* Pricing Tiers */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Free Tier */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-free">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Zap className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold" data-testid="text-tier-free">Free</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" data-testid="text-price-free">$0</span>
+                  <span className="text-muted-foreground">/forever</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Perfect for trying out SaintSal
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>100 messages per month</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Basic chat mode</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Standard response time</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Community support</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" asChild data-testid="button-get-started-free">
+                <Link href="/chat">Get Started</Link>
+              </Button>
+            </Card>
+
+            {/* Unlimited Starter - $20 */}
+            <Card className="relative p-6 flex flex-col border-border ring-2 ring-primary shadow-lg shadow-primary/20 hover-elevate" data-testid="card-pricing-starter">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground" data-testid="badge-popular">
+                Most Popular
+              </Badge>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Zap className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold" data-testid="text-tier-starter">Unlimited Starter</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" data-testid="text-price-starter">$20</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Unlimited AI power for individuals
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Unlimited messages</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>All 5 AI modes (Chat, Search, Research, Code, Voice)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Voice conversations (ElevenLabs)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Image generation (DALL-E & Grok)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Extended memory system</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Priority support</span>
+                </li>
+              </ul>
+              <Button className="w-full" data-testid="button-upgrade-starter">
+                Upgrade to Starter
+              </Button>
+            </Card>
+
+            {/* Pro - $97 */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-pro">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Shield className="h-5 w-5 text-accent" />
+                </div>
+                <h3 className="text-xl font-bold" data-testid="text-tier-pro">Pro</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" data-testid="text-price-pro">$97</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Advanced features for power users
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in Unlimited Starter</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>10x faster response times</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Advanced AI models</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Custom AI personalities</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>API access</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>White-glove support</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" data-testid="button-upgrade-pro">
+                Upgrade to Pro
+              </Button>
+            </Card>
+
+            {/* Enterprise - Custom Pricing */}
+            <Card className="relative p-6 flex flex-col border-border hover-elevate" data-testid="card-pricing-enterprise">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-background border border-border">
+                  <Users className="h-5 w-5 text-accent" />
+                </div>
+                <h3 className="text-xl font-bold" data-testid="text-tier-enterprise">Enterprise</h3>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" data-testid="text-price-enterprise">Custom</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Tailored pricing for your organization
+                </p>
+              </div>
+              <ul className="space-y-3 mb-6 flex-1">
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in Pro</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>5 team seats included</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Up to 5 verified domains</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Team memory (extended)</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Shared knowledge base</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Admin dashboard</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>99.9% uptime SLA</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full" asChild data-testid="button-contact-sales">
+                <a href="mailto:sales@saintsal.ai?subject=Enterprise%20Plan%20Inquiry">Contact Sales</a>
+              </Button>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -81,16 +345,6 @@ export default function Pricing() {
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Stripe Pricing Table */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <stripe-pricing-table 
-            pricing-table-id="prctbl_1SIQItGVzsQbCDmmZ97ubwpM"
-            publishable-key="pk_live_51SGbmHGVzsQbCDmmc3GGBQKTrxEWfXJBw2wCZqPNJITuNcZdBI8uQa04BkWxBloqDq2fJmKuF2Z5o4MFO0o7uAJU009bQ0K6pw"
-          />
         </div>
       </section>
 

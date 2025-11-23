@@ -35,6 +35,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User>;
 
   // Conversations
   createConversation(data: InsertConversation): Promise<Conversation>;
@@ -48,6 +49,7 @@ export interface IStorage {
     isShared?: boolean;
     sharedWith?: string[];
   }): Promise<void>;
+  deleteConversation(id: string): Promise<void>;
 
   // Messages
   createMessage(data: InsertMessage): Promise<Message>;
@@ -123,6 +125,19 @@ export class DbStorage implements IStorage {
     return user;
   }
 
+  async updateUser(id: string, updates: Partial<Pick<User, 'firstName' | 'lastName' | 'phone' | 'profileImageUrl'>>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error('User not found');
+    }
+    return updated;
+  }
+
   // Conversations
   async createConversation(data: InsertConversation): Promise<Conversation> {
     const [conversation] = await db.insert(conversations).values(data).returning();
@@ -158,6 +173,13 @@ export class DbStorage implements IStorage {
       .update(conversations)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(conversations.id, id));
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    // Delete all messages in the conversation first
+    await db.delete(messages).where(eq(messages.conversationId, id));
+    // Then delete the conversation
+    await db.delete(conversations).where(eq(conversations.id, id));
   }
 
   // Messages

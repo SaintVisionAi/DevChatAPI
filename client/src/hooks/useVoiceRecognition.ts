@@ -61,9 +61,14 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       let interimTranscript = '';
       let finalTranscript = finalTranscriptRef.current;
 
+      console.log('[VoiceRecognition] onresult event, resultIndex:', event.resultIndex, 'total results:', event.results.length);
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
+        const isFinal = event.results[i].isFinal;
+        console.log('[VoiceRecognition] Result', i, ':', transcript, '| isFinal:', isFinal);
+        
+        if (isFinal) {
           finalTranscript += transcript + ' ';
         } else {
           interimTranscript += transcript;
@@ -71,6 +76,9 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       }
 
       finalTranscriptRef.current = finalTranscript;
+
+      const combinedText = finalTranscript.trim() || interimTranscript.trim();
+      console.log('[VoiceRecognition] Combined text:', combinedText);
 
       setState(prev => ({
         ...prev,
@@ -81,11 +89,18 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       // Callback with transcript
       if (onTranscript) {
         const isFinal = event.results[event.results.length - 1].isFinal;
-        onTranscript(finalTranscript.trim() || interimTranscript.trim(), isFinal);
+        console.log('[VoiceRecognition] Calling onTranscript callback with:', combinedText, '| isFinal:', isFinal);
+        onTranscript(combinedText, isFinal);
       }
     };
 
     recognition.onerror = (event: any) => {
+      // Ignore 'aborted' error as it's expected when user stops recording
+      if (event.error === 'aborted' || event.error === 'no-speech') {
+        setState(prev => ({ ...prev, isListening: false }));
+        return;
+      }
+      
       const errorMsg = `Speech recognition error: ${event.error}`;
       console.error(errorMsg);
       setState(prev => ({ ...prev, error: errorMsg, isListening: false }));
@@ -105,9 +120,23 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
     };
   }, [continuous, interimResults, lang, onTranscript, onError, state.isSupported]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!state.isSupported) {
       const errorMsg = 'Speech recognition not supported in this browser';
+      setState(prev => ({ ...prev, error: errorMsg }));
+      if (onError) onError(errorMsg);
+      return;
+    }
+
+    // Request microphone permission explicitly
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[VoiceRecognition] ✅ Microphone access granted');
+      // Stop the stream immediately - we just needed the permission
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+      const errorMsg = 'Microphone permission denied. Please allow microphone access.';
+      console.error('[VoiceRecognition] ❌ Microphone permission error:', err);
       setState(prev => ({ ...prev, error: errorMsg }));
       if (onError) onError(errorMsg);
       return;
@@ -117,16 +146,25 @@ export function useVoiceRecognition(options: VoiceRecognitionOptions = {}) {
       finalTranscriptRef.current = '';
       setState(prev => ({ ...prev, transcript: '', interimTranscript: '', error: null }));
       try {
+        console.log('[VoiceRecognition] 🎤 Starting speech recognition...');
         recognitionRef.current.start();
       } catch (error) {
-        console.error('Error starting recognition:', error);
+        console.error('[VoiceRecognition] ❌ Error starting recognition:', error);
+        const errorMsg = `Failed to start: ${error}`;
+        setState(prev => ({ ...prev, error: errorMsg }));
+        if (onError) onError(errorMsg);
       }
     }
   }, [state.isSupported, state.isListening, onError]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && state.isListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        // Ignore errors when stopping (already stopped, etc.)
+        console.debug('Error stopping recognition (likely already stopped):', error);
+      }
     }
   }, [state.isListening]);
 

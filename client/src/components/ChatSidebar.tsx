@@ -38,7 +38,7 @@ export function ChatSidebar({
           </div>
           <div className="group-data-[collapsible=icon]:hidden">
             <div className="font-bold text-base text-primary">SaintSal</div>
-            <div className="text-xs text-muted-foreground">Your Gotta Guy™</div>
+            <div className="text-xs text-muted-foreground">Responsible Intelligence</div>
           </div>
         </div>
         

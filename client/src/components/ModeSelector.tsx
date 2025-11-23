@@ -47,7 +47,7 @@ const modes = [
     id: 'voice' as ChatMode,
     icon: Mic,
     label: 'Voice',
-    description: 'Push-to-talk',
+    description: 'Voice conversation',
     color: 'text-primary',
     bgColor: 'bg-primary/10',
   },
